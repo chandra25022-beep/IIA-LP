@@ -1,0 +1,68 @@
+# ─── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# ─── Node / Frontend ─────────────────────────────────────────────────────────
+node_modules/
+dist/
+.cache/
+*.tsbuildinfo
+
+# ─── SQLite Databases (tracked so teammates get pre-seeded DBs on clone) ─────
+# Temporary SQLite journal/lock files
+data/*.db-shm
+data/*.db-wal
+data/*.db-journal
+
+# ─── ML Model weights (downloaded automatically on first run) ────────────────
+*.pt
+*.onnx
+*.torchscript
+runs/
+
+# ─── EasyOCR model cache ──────────────────────────────────────────────────────
+.EasyOCR/
+
+# ─── Environment / secrets ───────────────────────────────────────────────────
+.env
+frontend/.env
+*.env.local
+*.env.production
+
+# ─── IDE / OS ────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Test artefacts ──────────────────────────────────────────────────────────
+htmlcov/
+.coverage
+coverage.xml
+
+# ─── Unused folders ──────────────────────────────────────────────────────────
+New folder/
+
