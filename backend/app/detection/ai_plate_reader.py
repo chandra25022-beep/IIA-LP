@@ -73,11 +73,31 @@ def _get_plate_recognizer() -> Optional["LicensePlateRecognizer"]:
 
 
 def _clean_plate_text(raw: str) -> str:
-    """Clean raw plate text — remove filler chars, keep only alphanumeric."""
+    """Clean raw plate text — remove filler chars, keep only alphanumeric, strip country code artifacts."""
     if not raw:
         return ""
     cleaned = raw.strip().replace("_", "").replace("-", "").replace(" ", "").replace("·", "")
     cleaned = re.sub(r'[^A-Za-z0-9]', '', cleaned).upper()
+
+    # Valid Indian state codes for prefix disambiguation
+    valid_states = {
+        "AP", "AR", "AS", "BR", "CG", "GA", "GJ", "HR", "HP", "JH", "KA", "KL",
+        "MP", "MH", "MN", "ML", "MZ", "NL", "OR", "OD", "PB", "RJ", "SK", "TN",
+        "TR", "UP", "UK", "WB", "TS", "AN", "CH", "DD", "DL", "LD", "PY", "JK", "LA"
+    }
+
+    # Strip leading country code / IND / ND artifacts
+    if cleaned.startswith("IND") or cleaned.startswith("1ND"):
+        cleaned = cleaned[3:]
+    elif cleaned.startswith("IN") and len(cleaned) > 4 and cleaned[2:4] in valid_states:
+        cleaned = cleaned[2:]
+    elif cleaned.startswith("ND") and len(cleaned) > 4 and cleaned[2:4] in valid_states:
+        cleaned = cleaned[2:]
+    elif cleaned.startswith("ND") and len(cleaned) > 3 and cleaned[1:3] in valid_states:
+        cleaned = cleaned[1:]
+    elif cleaned.startswith("N") and len(cleaned) > 3 and cleaned[1:3] in valid_states:
+        cleaned = cleaned[1:]
+
     return cleaned
 
 
@@ -120,13 +140,14 @@ def _assemble_plate_from_rapid(detections: List[Dict[str, Any]]) -> List[Dict[st
     if not detections:
         return []
 
-    # Filter out noise (watermarks, stock photos, camera IDs, UI text)
+    # Filter out noise (watermarks, stock photos, camera IDs, UI text, country codes)
     NOISE_WORDS = {
         "ALAMY", "ALAMYCOM", "LALAMYCOM", "SHUTTERSTOCK", "GETTYIMAGES", "GETTY",
         "IMAGES", "DREAMSTIME", "STOCK", "PHOTO", "WWW", "COM", "HTTP", "HTTPS",
         "COVERFOX", "IND", "INDIA", "CREDIT", "WEGE", "CREDITWEGE", "IMAGEID",
         "AUTOBLOG", "AUTOBLOGCOM", "MOTORBEAM", "COPYRIGHT", "WATERMARK",
-        "RUNNING", "DEPLOYQ", "COVID19", "STOP", "SLOW", "PARKING"
+        "RUNNING", "DEPLOYQ", "COVID19", "STOP", "SLOW", "PARKING",
+        "ND", "1ND", "NID", "INDIA"
     }
 
     filtered = []
@@ -338,9 +359,11 @@ def read_plate_with_ai(image_bytes: bytes, additional_crops: Optional[List[np.nd
             # Bharat series without suffix (e.g., 22BH6517)
             elif re.match(r'^\d{2}BH\d{4}$', plate):
                 length_score = 104
-            # Indian 9-char: SS DD L NNNN (e.g., AP40C1235, WB06F5977)
-            elif len(plate) == 9 and plate[:2].isalpha() and plate[2:4].isdigit() and plate[-4:].isdigit():
-                length_score = 100
+            # Indian 9-char: SS DD L NNNN (e.g., AP40C1235, WB06F5977) OR SS D LL NNNN (e.g., DL7CQ1939)
+            elif len(plate) == 9 and plate[:2].isalpha() and plate[-4:].isdigit() and (
+                plate[2:4].isdigit() or (plate[2].isdigit() and plate[3:5].isalpha())
+            ):
+                length_score = 110
             # Indian older 8-char: SS DD NNNN (e.g., PB996996, MH029012)
             elif len(plate) == 8 and plate[:2].isalpha() and plate[2:].isdigit():
                 length_score = 98

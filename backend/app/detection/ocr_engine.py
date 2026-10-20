@@ -164,8 +164,14 @@ def apply_positional_correction(plate: str) -> str:
     # Strip leading country code artifacts
     if cleaned.startswith("IND") or cleaned.startswith("1ND"):
         cleaned = cleaned[3:]
-    elif cleaned.startswith("IN"):
+    elif cleaned.startswith("IN") and len(cleaned) > 4 and cleaned[2:4] in VALID_STATE_CODES:
         cleaned = cleaned[2:]
+    elif cleaned.startswith("ND") and len(cleaned) > 4 and cleaned[2:4] in VALID_STATE_CODES:
+        cleaned = cleaned[2:]
+    elif cleaned.startswith("ND") and len(cleaned) > 3 and cleaned[1:3] in VALID_STATE_CODES:
+        cleaned = cleaned[1:]
+    elif cleaned.startswith("N") and len(cleaned) > 3 and cleaned[1:3] in VALID_STATE_CODES:
+        cleaned = cleaned[1:]
 
     # Strip trailing screw/border artifact if 11 chars
     if len(cleaned) == 11 and cleaned[-1] in "1IL70|":
@@ -213,21 +219,47 @@ def apply_positional_correction(plate: str) -> str:
                     break
         return "".join(chars)
 
-    # 9-char Indian standard: SS DD L NNNN (e.g. AP40C1235)
+    # 9-char Indian standard:
+    # Format A: SS DD L NNNN (e.g. AP40C1235)
+    # Format B: SS D LL NNNN (e.g. DL7CQ1939)
     if len(cleaned) == 9:
         chars = list(cleaned)
         for i in range(2):
             if chars[i] in d2l: chars[i] = d2l[chars[i]]
-        for i in range(2, 4):
-            if chars[i] in l2d: chars[i] = l2d[chars[i]]
-        if chars[4] in d2l: chars[4] = d2l[chars[4]]
-        for i in range(5, 9):
-            if chars[i] in l2d: chars[i] = l2d[chars[i]]
+
+        # Check if Format B: single digit RTO (chars[2] is digit/l2d, chars[3] is letter/d2l)
+        is_single_digit_rto = (chars[2] in l2d or chars[2].isdigit()) and (chars[3] in d2l or chars[3].isalpha()) and not (chars[3].isdigit() and chars[3] not in d2l)
+
+        if is_single_digit_rto and (chars[4] in d2l or chars[4].isalpha()):
+            # SS D LL NNNN (e.g. DL7CQ1939)
+            if chars[2] in l2d: chars[2] = l2d[chars[2]]
+            for i in (3, 4):
+                if chars[i] in d2l: chars[i] = d2l[chars[i]]
+            for i in range(5, 9):
+                if chars[i] in l2d: chars[i] = l2d[chars[i]]
+        else:
+            # SS DD L NNNN (e.g. AP40C1235)
+            for i in range(2, 4):
+                if chars[i] in l2d: chars[i] = l2d[chars[i]]
+            if chars[4] in d2l: chars[4] = d2l[chars[4]]
+            for i in range(5, 9):
+                if chars[i] in l2d: chars[i] = l2d[chars[i]]
 
         state = "".join(chars[:2])
         if state in STATE_CONFUSION:
             state = STATE_CONFUSION[state]
             chars[0], chars[1] = state[0], state[1]
+        elif state not in VALID_STATE_CODES:
+            c0, c1 = state[0], state[1]
+            found = False
+            for r0 in [c0] + OCR_CONFUSION.get(c0, []):
+                for r1 in [c1] + OCR_CONFUSION.get(c1, []):
+                    if r0 + r1 in VALID_STATE_CODES:
+                        chars[0], chars[1] = r0, r1
+                        found = True
+                        break
+                if found:
+                    break
         return "".join(chars)
 
     return cleaned
