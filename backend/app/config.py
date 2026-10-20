@@ -22,12 +22,19 @@ DB_REGISTRATION = str(DATA_DIR / "registration.db")  # Vehicle Registration DB  
 DB_THEFT = str(DATA_DIR / "theft.db")                # Theft/Security DB        (LAPTOP C)
 DB_MINISTRY = str(DATA_DIR / "ministry.db")          # Ministry Reporting DB    (LAPTOP C)
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv(BASE_DIR / ".env")
+    load_dotenv(BASE_DIR / "backend" / ".env")
+except Exception:
+    pass
+
 # ─── Distributed Node URLs ────────────────────────────────────────────────────
-# Set these in your environment or a .env file to the LAN IP of each laptop.
-# Example:  NODE_B_URL=http://192.168.1.101:8001
-#           NODE_C_URL=http://192.168.1.102:8002
-NODE_B_URL = os.getenv("NODE_B_URL", "http://localhost:8001")  # Insurance + Registration
-NODE_C_URL = os.getenv("NODE_C_URL", "http://localhost:8002")  # Theft + Ministry
+# Set these in your environment or a .env file to the LAN IP / ngrok of each laptop.
+# Node A (Friend 1): Insurance + Registration
+NODE_B_URL = os.getenv("NODE_B_URL", "https://mooned-antics-shorter.ngrok-free.dev")
+# Node B (Friend 2): Theft + Ministry
+NODE_C_URL = os.getenv("NODE_C_URL", "https://manhood-overcome-copartner.ngrok-free.dev")
 
 # Databases owned locally by the MASTER (can write here directly)
 LOCAL_DATABASES = {"capture"}
