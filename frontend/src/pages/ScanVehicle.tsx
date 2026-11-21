@@ -3,12 +3,12 @@ import { api } from '../api';
 import UnifiedVehicleView from '../components/UnifiedVehicleView';
 
 const PIPELINE_STEPS = [
-  { key: 'image_loaded',         label: 'Image Loaded',                icon: '📷' },
-  { key: 'vehicle_detected',     label: 'Vehicle Detection (YOLOv8)',   icon: '🚗' },
-  { key: 'color_detected',       label: 'Color Detection (HSV)',        icon: '🎨' },
-  { key: 'plate_region_detected',label: 'Plate Region Detection',       icon: '🔲' },
-  { key: 'ocr_run',              label: 'OCR — License Plate Only',     icon: '📖' },
-  { key: 'normalized',           label: 'Plate Normalized',             icon: '✓'  },
+  { key: 'image_loaded',         label: 'Image Loaded',                           icon: '📷' },
+  { key: 'vehicle_detected',     label: 'Vehicle Detection (YOLOv8 + Vision AI)',  icon: '🚗' },
+  { key: 'color_detected',       label: 'Color Detection (Gemini AI Vision)',      icon: '🎨' },
+  { key: 'plate_region_detected',label: 'Plate Region Detection',                  icon: '🔲' },
+  { key: 'ocr_run',              label: 'OCR — License Plate Only',                icon: '📖' },
+  { key: 'normalized',           label: 'Plate Normalized',                        icon: '✓'  },
 ];
 
 const TIER_COLORS: Record<string, { bg: string; text: string; border: string }> = {
@@ -208,9 +208,17 @@ export default function ScanVehicle() {
                           {' '}{scanResult.is_valid_format ? '✓ Valid Indian plate format' : '⚠ Non-standard format'}
                         </div>
                       )}
-                      {step.key === 'vehicle_detected' && scanResult?.vehicle_type && (
+                      {step.key === 'vehicle_detected' && (scanResult?.vehicle_type || scanResult?.detected_make) && (
                         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                          {scanResult.vehicle_type} · Confidence: {(scanResult.detection_confidence * 100).toFixed(0)}%
+                          <strong style={{ color: 'var(--color-primary)' }}>
+                            {scanResult.detected_make ? `${scanResult.detected_make} ${scanResult.detected_model || ''} (${scanResult.vehicle_type || 'Vehicle'})` : scanResult.vehicle_type}
+                          </strong> · Confidence: {((scanResult.detection_confidence || 0.95) * 100).toFixed(0)}%
+                        </div>
+                      )}
+                      {step.key === 'color_detected' && scanResult?.detected_color && (
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                          Detected: <strong style={{ color: 'var(--text-primary)' }}>{scanResult.detected_color}</strong>
+                          {scanResult.color_source && <span style={{ marginLeft: 6, fontSize: 10, color: '#38bdf8', background: 'rgba(56,189,248,0.15)', padding: '1px 5px', borderRadius: 4 }}>{scanResult.color_source}</span>}
                         </div>
                       )}
                     </div>
@@ -229,9 +237,36 @@ export default function ScanVehicle() {
             )}
 
             {scanResult?.detected_color && (
-              <div style={{ marginTop: 8, padding: '8px 14px', background: 'var(--color-surface-2)', borderRadius: 8, fontSize: 12 }}>
+              <div style={{ marginTop: 8, padding: '10px 14px', background: 'var(--color-surface-2)', borderRadius: 8, fontSize: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Detected color: </span>
-                <strong>{scanResult.detected_color}</strong>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{
+                    width: 14, height: 14, borderRadius: '50%',
+                    backgroundColor: scanResult.detected_color.toUpperCase() === 'WHITE' ? '#ffffff' :
+                                     scanResult.detected_color.toUpperCase() === 'BLACK' ? '#000000' :
+                                     scanResult.detected_color.toUpperCase() === 'SILVER' ? '#c0c0c0' :
+                                     scanResult.detected_color.toUpperCase() === 'RED' ? '#ef4444' :
+                                     scanResult.detected_color.toUpperCase() === 'BLUE' ? '#3b82f6' : '#9ca3af',
+                    border: '2px solid rgba(255,255,255,0.4)',
+                    boxShadow: '0 0 6px rgba(0,0,0,0.5)',
+                    display: 'inline-block'
+                  }} />
+                  <strong style={{ fontSize: 13, letterSpacing: '0.05em', color: 'var(--text-primary)' }}>{scanResult.detected_color}</strong>
+                  {scanResult.color_source && (
+                    <span style={{ fontSize: 10, color: '#38bdf8', background: 'rgba(56,189,248,0.15)', border: '1px solid rgba(56,189,248,0.3)', padding: '2px 6px', borderRadius: 4 }}>
+                      {scanResult.color_source}
+                    </span>
+                  )}
+                </span>
+              </div>
+            )}
+
+            {(scanResult?.detected_make || scanResult?.detected_model) && (
+              <div style={{ marginTop: 8, padding: '10px 14px', background: 'rgba(56,189,248,0.08)', borderRadius: 8, fontSize: 12, border: '1px solid rgba(56,189,248,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Vision AI Identification: </span>
+                <strong style={{ color: '#38bdf8', fontSize: 13 }}>
+                  {scanResult.detected_make} {scanResult.detected_model || ''} ({scanResult.vehicle_type || 'SUV'})
+                </strong>
               </div>
             )}
 

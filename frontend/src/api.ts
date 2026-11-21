@@ -187,4 +187,25 @@ export const api = {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   },
+
+  // ─── Phase 3: Context Discovery & Unstructured Data Integration ──────
+  contextSearch: async (plate: string, contextHints: string[] = []) => {
+    const res = await fetch(`${API_BASE}/api/context-search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plate, context_hints: contextHints }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  },
+  getUnstructuredStats: async () => {
+    const res = await fetch(`${API_BASE}/api/context-search/unstructured-stats`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  },
+  getSchemaGraph: async () => {
+    const res = await fetch(`${API_BASE}/api/context-search/schema-graph`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  },
 };

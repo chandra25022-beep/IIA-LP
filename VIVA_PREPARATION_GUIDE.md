@@ -237,3 +237,157 @@ In traditional rule-based expert systems (like MYCIN or CLIPS), adding rule $R_{
 - [x] Frontend running on port 5173 (React UI with live camera/image ANPR, federation status, view comparison, string matching)
 - [x] Git branches prepared (`main`, `node-a`, `node-b`)
 - [x] Setup prompts written for teammates (`NODE_A_SETUP_PROMPT.md`, `NODE_B_SETUP_PROMPT.md`)
+- [x] **Phase 3:** Each DB expanded to 4-5 tables with FK-PK relationships (21 total tables)
+- [x] **Phase 3:** FK-PK context discovery across all nodes (16 FK relationships)
+- [x] **Phase 3:** TF-IDF unstructured data search with 11 documents indexed (1019 tokens)
+- [x] **Phase 3:** Context Discovery page in frontend with risk assessment, per-node timing
+
+---
+
+## 🧩 Section 5: Phase 3 — Context Discovery & Unstructured Data Integration
+
+### 5.1 Database Schema Expansion (Rubric Point 1 — 2 marks)
+
+Each database was expanded from 1 table to 4-5 tables with proper FK-PK relationships:
+
+| Database | Tables | FK Relationships |
+|---|---|---|
+| **capture.db** | `vehicle_capture`, `cameras`, `capture_alerts`, `operator_logs` | camera_id (N:1), capture_id (1:N) |
+| **registration.db** | `vehicle_registration`, `vehicle_owners`, `vehicle_specs`, `rto_transactions`, `fitness_certificates` | owner_id (N:1), reg_serial (1:1, 1:N) |
+| **insurance.db** | `insurance_policies`, `insurance_claims`, `policy_endorsements`, `premium_payments` | policy_id (1:N) |
+| **theft.db** | `vehicle_security_records`, `investigation_details`, `recovery_records`, `suspect_info` | case_id (1:N) |
+| **ministry.db** | `transport_reports`, `enforcement_actions`, `compliance_history`, `blacklisted_vehicles` | report_id (1:N), vehicle_ref (direct) |
+
+**Total: 21 tables, 16 FK-PK relationships across 5 databases on 3 machines.**
+
+### 5.2 FK-PK Context Discovery (Rubric Point 2 — 3 marks)
+
+#### How It Works — The Real-World Company Analogy
+
+**Professor's Key Question:** "If you are the master company and you send only a number plate to another company, does the other company process locally and return minimal records, or does it send all data?"
+
+> **Answer:**
+> "Each node (company) performs LOCAL processing. Here's exactly what happens:
+> 1. **Master sends only the plate number** (e.g., `DL7CQ1939`) to Node A and Node B via `POST /api/node/context-query`.
+> 2. **Node A (Insurance + Registration company)** receives the plate, runs FK-PK joins INTERNALLY:
+>    - Looks up `vehicle_registration WHERE vehicle_reg_no = 'DL7CQ1939'`
+>    - Gets `reg_serial` → joins to `vehicle_owners` (owner details), `vehicle_specs` (technical details), `rto_transactions` (transaction history), `fitness_certificates` (fitness status)
+>    - Gets `registration_id` → looks up `insurance_policies` → joins to `insurance_claims`, `policy_endorsements`, `premium_payments`
+>    - **Returns a MINIMAL context summary**: owner name, vehicle make/model, fitness status, risk flags (e.g., FITNESS_EXPIRED), not raw table dumps.
+> 3. **Node B (Theft + Ministry company)** does the same:
+>    - Looks up `vehicle_security_records WHERE vehicle_identifier = 'DL7CQ1939'`
+>    - Joins to `investigation_details`, `recovery_records`, `suspect_info`
+>    - Looks up `transport_reports WHERE vehicle_ref = 'DL7CQ1939'`
+>    - Joins to `enforcement_actions`, `compliance_history`, `blacklisted_vehicles`
+>    - Returns minimal context: case count, is_blacklisted, compliance rate, risk flags.
+> 4. **Master accumulates** all context from all 3 sources (itself + 2 remote nodes), extracts context keywords, then uses them for unstructured search."
+
+#### Technical Implementation
+- **File:** `node_backend/main.py` → `POST /api/node/context-query` endpoint
+- **Config:** `node_backend/config.py` → `DB_RELATED_TABLES` dict defines all FK-PK relationships
+- **Master endpoint:** `POST /api/context-search` in `backend/app/api/routes_integration.py`
+- **Fallback:** If remote nodes are offline, master falls back to local SQLite copies using `ContextDiscoveryEngine` methods
+
+### 5.3 Unstructured Data Integration via TF-IDF (Rubric Point 3 — 3 marks)
+
+#### What Are the Unstructured Documents?
+11 real-world documents in `data/unstructured/`:
+- Delhi Police theft bulletins
+- IRDAI insurance circulars
+- MoRTH fitness standards notifications
+- NCRB stolen vehicle alerts
+- NGT emission compliance orders
+- Manufacturer recall/service advisories (Hyundai, Maruti, Tata)
+- NHAI ANPR-FASTag integration reports
+- Road accident analysis reports
+- RTO tax renewal notices
+
+#### How TF-IDF Search Works
+
+> **Answer:**
+> "After collecting structured context from all nodes, we extract **context keywords** — things like the vehicle make (Hyundai), model (Creta), city (Delhi), case type (STOLEN), insurance status, etc.
+>
+> These keywords become the **query** for our TF-IDF search engine:
+> 1. **Indexing:** All 11 documents are tokenized (stop words removed), and we compute IDF scores: $\text{IDF}(t) = \log\frac{N}{1 + \text{df}(t)} + 1$ where $N$ = 11 documents.
+> 2. **TF-IDF vectors:** Each document gets an augmented TF vector: $\text{TF}(t) = 0.5 + 0.5 \cdot \frac{f(t)}{\max f}$ multiplied by IDF.
+> 3. **Cosine similarity:** The query vector (from context keywords) is compared against each document vector:
+>    $$\text{sim}(q, d) = \frac{\vec{q} \cdot \vec{d}}{|\vec{q}| \cdot |\vec{d}|}$$
+> 4. **Top-k results** are returned with relevance scores, matched keywords, and contextual snippets.
+>
+> For example, querying plate `DL7CQ1939` (a Hyundai Creta from Delhi) would surface the Hyundai Creta recall notice, Delhi police theft bulletin, and IRDAI SUV insurance circular as highly relevant."
+
+#### Implementation
+- **File:** `backend/app/integration/context_engine.py` → `UnstructuredSearchEngine` class
+- **Index stats:** 11 documents, 1019 unique tokens
+- **Minimum relevance threshold:** 0.01 cosine similarity
+
+### 5.4 Phase 3 Viva Q&A
+
+### Q16: Why do you use FK-PK joins instead of just querying the primary table?
+> **Answer:**
+> "In a real-world database, entity information is DISTRIBUTED across multiple related tables. For example, in the registration database, the vehicle's owner info is in `vehicle_owners`, specs (engine CC, emission norm) are in `vehicle_specs`, and fitness test results are in `fitness_certificates` — all linked by `reg_serial` (FK-PK).
+> If we only queried `vehicle_registration`, we'd miss critical context like whether the fitness certificate has expired, the owner's full address, or the emission norm.
+> Our FK-PK traversal discovers ALL related information, then returns a MINIMAL summary — not a raw dump of every row."
+
+### Q17: How does each node decide what to return? Why not send all records?
+> **Answer:**
+> "This mirrors how real companies share data:
+> - **Data sovereignty:** Each node is an autonomous company (insurance company, police bureau, RTO). They don't expose their raw databases.
+> - **Minimal disclosure:** The node processes the query LOCALLY, runs FK-PK joins, identifies risk flags (e.g., POLICY_EXPIRED, ACTIVELY_STOLEN), and returns a compact JSON summary.
+> - **Bandwidth optimization:** Sending all records would mean transmitting thousands of rows. Instead, our context-query endpoint returns ~1KB per database, containing only risk-relevant summaries.
+> - **Processing time visible:** Each node reports its internal processing time (typically 2-5ms) separately from network latency."
+
+### Q18: How do you handle latency when querying remote nodes?
+> **Answer:**
+> "Our system measures and reports timing at every step:
+> - `master_capture`: Local SQLite query (~2ms)
+> - `node_a_remote`: HTTP round-trip to Node A via ngrok (~500-2000ms depending on network)
+> - `node_a_internal_ms`: Node A's internal processing time (2-5ms — proves the node does real work)
+> - `node_b_remote`: HTTP round-trip to Node B
+> - `accumulation_and_tfidf`: Context merging + TF-IDF search (~5-10ms)
+>
+> If a node is offline, we use local fallback copies (graceful degradation), which runs in <5ms."
+
+### Q19: What is the difference between your SQL Query page and Context Discovery page?
+> **Answer:**
+> "The SQL Query page (Phase 1-2) lets you write raw SQL — it's a federated query processor that routes SELECT statements to the correct node.
+> The Context Discovery page (Phase 3) is SEMANTIC — you provide just a plate number, and the system:
+> 1. Discovers structured context via FK-PK joins across 21 tables on 3 machines
+> 2. Accumulates context keywords from all nodes
+> 3. Uses those keywords to search unstructured data via TF-IDF
+> 4. Returns an integrated risk assessment
+> This is Information Integration in its truest sense — combining structured and unstructured data from distributed autonomous sources."
+
+### Q20: Can you explain the TF-IDF formula you used?
+> **Answer:**
+> "We use augmented term frequency with standard IDF:
+> - **Augmented TF:** $\text{TF}(t, d) = 0.5 + 0.5 \cdot \frac{f(t, d)}{\max_{t' \in d} f(t', d)}$ — prevents bias toward longer documents.
+> - **IDF:** $\text{IDF}(t) = \log\frac{N}{1 + \text{df}(t)} + 1$ — the +1 prevents zero IDF for universal terms.
+> - **Weight:** $w(t, d) = \text{TF}(t, d) \times \text{IDF}(t)$
+> - **Cosine similarity** between query vector $\vec{q}$ and document vector $\vec{d}$ gives relevance score.
+> Our corpus has 11 documents and 1019 unique tokens after stop-word removal."
+
+### Q21: What is the overall system architecture for Phase 3?
+> **Answer:**
+> "The workflow for a Phase 3 context search is:
+> ```
+> User enters plate → Master captures local context (capture.db FK-PK joins)
+>   → Sends plate to Node A (insurance+registration FK-PK joins)
+>   → Sends plate to Node B (theft+ministry FK-PK joins)
+>   → Each node returns MINIMAL context (not raw data)
+>   → Master accumulates all context, extracts keywords
+>   → TF-IDF search on 11 unstructured documents
+>   → Integrated result: structured context + unstructured matches + risk score
+> ```
+> This achieves all 3 rubric points: multi-table FK-PK (21 tables), federated context discovery (3 nodes), and unstructured integration (TF-IDF)."
+
+### Q22: Show me the live demo for Phase 3.
+> **Answer (Demo Steps):**
+> 1. Open browser to `http://localhost:5173/context`
+> 2. Enter plate `DL7CQ1939` and click "Context Search"
+> 3. Show the **Risk Assessment** card (risk score, risk flags)
+> 4. Show the **Distributed Processing** section — node statuses (ONLINE/OFFLINE), per-node timing
+> 5. Show the **Per-Node Context** cards — each shows FK tables joined, risk flags, context summary
+> 6. Show the **Unstructured Data** section — TF-IDF results with relevance scores and snippets
+> 7. Show the **FK-PK Schema** button — visualizes all 21 tables and 16 FK relationships
+> 8. API endpoint: `curl -X POST http://localhost:8000/api/context-search -H "Content-Type: application/json" -d '{"plate":"DL7CQ1939"}'`

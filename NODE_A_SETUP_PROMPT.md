@@ -93,3 +93,43 @@ Open your browser to:
 - Interactive Swagger docs: [http://localhost:8001/docs](http://localhost:8001/docs)
 
 You are all set! The Master will query your node to federate Insurance and Registration data in real time.
+
+---
+
+## 🧩 Phase 3: Context Discovery (NEW)
+
+Your node now supports **Phase 3 Context Discovery** with expanded databases:
+
+### Database Tables (FK-PK Relationships)
+**insurance.db** (4 tables):
+- `insurance_policies` — Primary table (FK: `registration_id`)
+- `insurance_claims` — FK: `policy_id` → `insurance_policies`
+- `policy_endorsements` — FK: `policy_id` → `insurance_policies`
+- `premium_payments` — FK: `policy_id` → `insurance_policies`
+
+**registration.db** (5 tables):
+- `vehicle_registration` — Primary table (FK: `vehicle_reg_no`)
+- `vehicle_owners` — FK: `owner_id` → `vehicle_registration`
+- `vehicle_specs` — FK: `reg_serial` → `vehicle_registration`
+- `rto_transactions` — FK: `reg_serial` → `vehicle_registration`
+- `fitness_certificates` — FK: `reg_serial` → `vehicle_registration`
+
+### New Endpoint
+```
+POST /api/node/context-query
+Body: {"plate": "DL7CQ1939", "context_hints": []}
+```
+This endpoint:
+1. Looks up the plate in both `insurance.db` and `registration.db`
+2. Performs LOCAL FK-PK joins across all related tables
+3. Returns a **minimal context summary** (risk flags, keywords) — NOT a raw data dump
+4. Reports internal processing time
+
+### Test It
+```bash
+curl -X POST http://localhost:8001/api/node/context-query \
+  -H "Content-Type: application/json" \
+  -d '{"plate":"DL7CQ1939"}'
+```
+
+The response will show FK tables joined (e.g., `vehicle_owners`, `vehicle_specs`, `insurance_claims`), risk flags (e.g., `FITNESS_EXPIRED`, `POLICY_EXPIRED`), and context keywords extracted from the data.

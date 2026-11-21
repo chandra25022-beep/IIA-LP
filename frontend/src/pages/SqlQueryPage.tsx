@@ -10,7 +10,279 @@ const DB_OPTIONS = [
   { value: 'ministry',     label: '🏛️ Ministry DB',           color: '#c084fc' },
 ];
 
-const EXAMPLE_QUERIES = [
+type CrudAction = 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE';
+
+interface CrudTemplate {
+  action: CrudAction;
+  db: string;
+  label: string;
+  table: string;
+  keyCol: string;
+  sql: string;
+  sampleKey: string;
+}
+
+const CRUD_TEMPLATES: CrudTemplate[] = [
+  // ── REGISTRATION ──
+  {
+    action: 'INSERT',
+    db: 'registration',
+    label: '➕ Registration: Add New Vehicle',
+    table: 'vehicle_registration',
+    keyCol: 'vehicle_reg_no',
+    sampleKey: 'DL09VIVA2026',
+    sql: `-- INSERT a new vehicle into RTO Registration Database (Node A)
+INSERT INTO vehicle_registration (
+  vehicle_reg_no, owner_name, owner_contact, owner_address,
+  registration_date, manufacturer, model_name, vehicle_class,
+  registered_color, fuel_type, registration_status, rto_office
+) VALUES (
+  'DL09VIVA2026',
+  'Prof. Anupama Ray',
+  '+91-98765-43210',
+  'IIIT Delhi Campus, Okhla Phase 3',
+  '2026-10-21',
+  'Hyundai',
+  'Creta 1.6 VTVT',
+  'SUV / Private',
+  'BLACK',
+  'PETROL',
+  'ACTIVE',
+  'DL-09 Janakpuri, Delhi'
+);`
+  },
+  {
+    action: 'UPDATE',
+    db: 'registration',
+    label: '✏️ Registration: Modify Vehicle Details',
+    table: 'vehicle_registration',
+    keyCol: 'vehicle_reg_no',
+    sampleKey: 'DL09VIVA2026',
+    sql: `-- UPDATE an existing vehicle in RTO Registration Database (Node A)
+UPDATE vehicle_registration
+SET
+  owner_name = 'Prof. Anupama Ray (HOD IIITD)',
+  registered_color = 'OBSIDIAN_BLACK',
+  registration_status = 'ACTIVE'
+WHERE vehicle_reg_no = 'DL09VIVA2026';`
+  },
+  {
+    action: 'DELETE',
+    db: 'registration',
+    label: '🗑️ Registration: Delete Vehicle Record',
+    table: 'vehicle_registration',
+    keyCol: 'vehicle_reg_no',
+    sampleKey: 'DL09VIVA2026',
+    sql: `-- DELETE vehicle record from RTO Registration Database (Node A)
+DELETE FROM vehicle_registration
+WHERE vehicle_reg_no = 'DL09VIVA2026';`
+  },
+
+  // ── INSURANCE ──
+  {
+    action: 'INSERT',
+    db: 'insurance',
+    label: '➕ Insurance: Add Policy Record',
+    table: 'insurance_records',
+    keyCol: 'registration_id',
+    sampleKey: 'DL09VIVA2026',
+    sql: `-- INSERT an insurance policy into National Insurance Registry (Node A)
+INSERT INTO insurance_records (
+  registration_id, insurer_name, policy_number,
+  policy_start_date, policy_expiry_date, insurance_status,
+  vehicle_category, premium_amount, nominee_name, coverage_type, claim_count
+) VALUES (
+  'DL09VIVA2026',
+  'Bajaj Allianz General Insurance',
+  'BAJAJ-LUX-2026-001',
+  '2026-10-21',
+  '2028-10-21',
+  'ACTIVE',
+  'Private Car',
+  38500.0,
+  'Rohan Ray',
+  'Comprehensive Zero Dep',
+  0
+);`
+  },
+  {
+    action: 'UPDATE',
+    db: 'insurance',
+    label: '✏️ Insurance: Update Policy Status / Expiry',
+    table: 'insurance_records',
+    keyCol: 'registration_id',
+    sampleKey: 'DL09VIVA2026',
+    sql: `-- UPDATE insurance status in National Insurance Registry (Node A)
+UPDATE insurance_records
+SET
+  insurance_status = 'EXPIRED',
+  policy_expiry_date = '2026-01-01',
+  claim_count = 1
+WHERE registration_id = 'DL09VIVA2026';`
+  },
+  {
+    action: 'DELETE',
+    db: 'insurance',
+    label: '🗑️ Insurance: Cancel / Delete Policy',
+    table: 'insurance_records',
+    keyCol: 'registration_id',
+    sampleKey: 'DL09VIVA2026',
+    sql: `-- DELETE insurance policy from National Insurance Registry (Node A)
+DELETE FROM insurance_records
+WHERE registration_id = 'DL09VIVA2026';`
+  },
+
+  // ── THEFT / SECURITY ──
+  {
+    action: 'INSERT',
+    db: 'theft',
+    label: '➕ Theft: File Stolen / Security Report',
+    table: 'vehicle_security_records',
+    keyCol: 'vehicle_identifier',
+    sampleKey: 'DL09VIVA2026',
+    sql: `-- INSERT theft / wanted record into Police Crime Bureau (Node B)
+INSERT INTO vehicle_security_records (
+  vehicle_identifier, case_type, case_status,
+  reported_date, police_reference, shredding_status, fir_number
+) VALUES (
+  'DL09VIVA2026',
+  'THEFT',
+  'OPEN',
+  '2026-10-21',
+  'PS-OKHLA-2026',
+  'NOT_SCRAPPED',
+  'FIR-DEL-9901'
+);`
+  },
+  {
+    action: 'UPDATE',
+    db: 'theft',
+    label: '✏️ Theft: Clear / Close Security Case',
+    table: 'vehicle_security_records',
+    keyCol: 'vehicle_identifier',
+    sampleKey: 'DL09VIVA2026',
+    sql: `-- UPDATE theft record to CLOSED / CLEARED (Node B)
+UPDATE vehicle_security_records
+SET
+  case_status = 'CLOSED',
+  case_type = 'CLEARED'
+WHERE vehicle_identifier = 'DL09VIVA2026';`
+  },
+  {
+    action: 'DELETE',
+    db: 'theft',
+    label: '🗑️ Theft: Remove Security Record',
+    table: 'vehicle_security_records',
+    keyCol: 'vehicle_identifier',
+    sampleKey: 'DL09VIVA2026',
+    sql: `-- DELETE security record from Police Crime Bureau (Node B)
+DELETE FROM vehicle_security_records
+WHERE vehicle_identifier = 'DL09VIVA2026';`
+  },
+
+  // ── MINISTRY ──
+  {
+    action: 'INSERT',
+    db: 'ministry',
+    label: '➕ Ministry: Issue Violation Report',
+    table: 'transport_reports',
+    keyCol: 'vehicle_ref',
+    sampleKey: 'DL09VIVA2026',
+    sql: `-- INSERT transport violation report into Ministry DB (Node B)
+INSERT INTO transport_reports (
+  vehicle_ref, report_type, report_date,
+  reason, severity, report_status, action_taken
+) VALUES (
+  'DL09VIVA2026',
+  'UNINSURED_VEHICLE',
+  '2026-10-21',
+  'Vehicle spotted operating on expressway without valid insurance',
+  'HIGH',
+  'PENDING',
+  'Electronic challan issued to owner'
+);`
+  },
+  {
+    action: 'UPDATE',
+    db: 'ministry',
+    label: '✏️ Ministry: Mark Report Actioned / Resolved',
+    table: 'transport_reports',
+    keyCol: 'vehicle_ref',
+    sampleKey: 'DL09VIVA2026',
+    sql: `-- UPDATE ministry report status to ACTIONED (Node B)
+UPDATE transport_reports
+SET
+  report_status = 'ACTIONED',
+  severity = 'LOW',
+  action_taken = 'Fine paid and insurance renewed by owner'
+WHERE vehicle_ref = 'DL09VIVA2026';`
+  },
+  {
+    action: 'DELETE',
+    db: 'ministry',
+    label: '🗑️ Ministry: Dismiss / Delete Violation Report',
+    table: 'transport_reports',
+    keyCol: 'vehicle_ref',
+    sampleKey: 'DL09VIVA2026',
+    sql: `-- DELETE report from Ministry DB (Node B)
+DELETE FROM transport_reports
+WHERE vehicle_ref = 'DL09VIVA2026';`
+  },
+
+  // ── CAPTURE ──
+  {
+    action: 'INSERT',
+    db: 'capture',
+    label: '➕ Capture: Add Surveillance Camera Event',
+    table: 'vehicle_capture',
+    keyCol: 'plate_number',
+    sampleKey: 'DL09VIVA2026',
+    sql: `-- INSERT camera surveillance detection into Capture DB (Master Local)
+INSERT INTO vehicle_capture (
+  plate_number, detected_vehicle_type, detected_color,
+  capture_timestamp, capture_location, image_path,
+  detection_confidence, ocr_confidence, camera_id, lane_number
+) VALUES (
+  'DL09VIVA2026',
+  'SUV',
+  'BLACK',
+  '2026-10-21 14:30:00',
+  'Sarita Vihar Checkpost, Delhi',
+  'test_assets/assets/test0.9.jpeg',
+  0.98,
+  0.95,
+  'CAM-DEL-01',
+  1
+);`
+  },
+  {
+    action: 'UPDATE',
+    db: 'capture',
+    label: '✏️ Capture: Update Detected Color / Class',
+    table: 'vehicle_capture',
+    keyCol: 'plate_number',
+    sampleKey: 'DL09VIVA2026',
+    sql: `-- UPDATE detected attributes in Capture DB (Master Local)
+UPDATE vehicle_capture
+SET
+  detected_color = 'OBSIDIAN_BLACK',
+  detected_vehicle_type = 'SUV'
+WHERE plate_number = 'DL09VIVA2026';`
+  },
+  {
+    action: 'DELETE',
+    db: 'capture',
+    label: '🗑️ Capture: Remove Camera Capture Event',
+    table: 'vehicle_capture',
+    keyCol: 'plate_number',
+    sampleKey: 'DL09VIVA2026',
+    sql: `-- DELETE capture record from Capture DB (Master Local)
+DELETE FROM vehicle_capture
+WHERE plate_number = 'DL09VIVA2026';`
+  },
+];
+
+const EXAMPLE_SELECT_QUERIES = [
   {
     label: 'All captures (global view)',
     db: 'capture',
@@ -39,7 +311,7 @@ const EXAMPLE_QUERIES = [
   {
     label: 'Cross-DB: plate lookup (global view)',
     db: 'all',
-    query: "SELECT * FROM vehicle_capture WHERE plate_number = 'UP32AB1234'",
+    query: "SELECT * FROM vehicle_capture WHERE plate_number = 'DL7CQ1939'",
   },
 ];
 
@@ -73,8 +345,9 @@ interface WriteResult {
 }
 
 export default function SqlQueryPage() {
-  const [query, setQuery] = useState(EXAMPLE_QUERIES[0].query);
-  const [database, setDatabase] = useState('capture');
+  const [currentAction, setCurrentAction] = useState<CrudAction>('SELECT');
+  const [database, setDatabase] = useState('registration');
+  const [query, setQuery] = useState(EXAMPLE_SELECT_QUERIES[2].query);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ResultSet[] | null>(null);
   const [writeResult, setWriteResult] = useState<WriteResult | null>(null);
@@ -82,8 +355,16 @@ export default function SqlQueryPage() {
   const [error, setError] = useState('');
   const [schema, setSchema] = useState<Record<string, SchemaDB> | null>(null);
   const [schemaOpen, setSchemaOpen] = useState(false);
-  const [writeMode, setWriteMode] = useState(false);
   const [ownership, setOwnership] = useState<Record<string, {owner: string, node: string, writable_here: boolean}> | null>(null);
+
+  // Quick form helper fields for customizing templates on the fly
+  const [customPlate, setCustomPlate] = useState('DL09VIVA2026');
+  const [customName, setCustomName] = useState('Prof. Anupama Ray');
+  const [customColor, setCustomColor] = useState('BLACK');
+  const [customMake, setCustomMake] = useState('Hyundai');
+  const [customModel, setCustomModel] = useState('Creta 1.6 VTVT');
+  const [customStatus, setCustomStatus] = useState('ACTIVE');
+  const [lastWrittenPlate, setLastWrittenPlate] = useState('');
 
   useEffect(() => {
     api.getSqlTables()
@@ -94,19 +375,27 @@ export default function SqlQueryPage() {
       .catch(() => setOwnership(null));
   }, []);
 
-  const runQuery = async () => {
-    if (!query.trim()) return;
+  const isWriteMode = currentAction !== 'SELECT';
+
+  const runQuery = async (queryToRun?: string, dbToRun?: string, actionToRun?: CrudAction) => {
+    const q = queryToRun || query;
+    const db = dbToRun || database;
+    const act = actionToRun || currentAction;
+
+    if (!q.trim()) return;
     setLoading(true);
     setError('');
     setResults(null);
     setWriteResult(null);
+
     try {
-      if (writeMode) {
-        if (database === 'all') throw new Error("Please select a specific database for write operations.");
-        const data = await api.sqlWrite(query, database);
+      if (act !== 'SELECT') {
+        if (db === 'all') throw new Error("Please select a specific database for write operations.");
+        const data = await api.sqlWrite(q, db);
         setWriteResult(data);
+        setLastWrittenPlate(customPlate);
       } else {
-        const data = await api.sqlQuery(query, database);
+        const data = await api.sqlQuery(q, db);
         setResults(data.results);
         const successfulRows = (data.results as ResultSet[])
           .filter(r => !r.error?.includes('no such table'))
@@ -120,13 +409,54 @@ export default function SqlQueryPage() {
     }
   };
 
-  const loadExample = (ex: typeof EXAMPLE_QUERIES[0]) => {
+  const loadCrudTemplate = (tmpl: CrudTemplate) => {
+    setCurrentAction(tmpl.action);
+    setDatabase(tmpl.db);
+    setQuery(tmpl.sql);
+    setCustomPlate(tmpl.sampleKey);
+    setResults(null);
+    setWriteResult(null);
+    setError('');
+  };
+
+  const loadSelectExample = (ex: typeof EXAMPLE_SELECT_QUERIES[0]) => {
+    setCurrentAction('SELECT');
     setQuery(ex.query);
     setDatabase(ex.db);
     setResults(null);
     setWriteResult(null);
     setError('');
-    setWriteMode(false);
+  };
+
+  // Re-apply values from the Quick Form into the current query
+  const applyQuickFormToQuery = () => {
+    let updated = query;
+    // Replace plate placeholder
+    updated = updated.replace(/DL09VIVA2026/g, customPlate.trim().toUpperCase());
+    updated = updated.replace(/Prof\. Anupama Ray/g, customName.trim());
+    updated = updated.replace(/BLACK/g, customColor.trim().toUpperCase());
+    updated = updated.replace(/Hyundai/g, customMake.trim());
+    updated = updated.replace(/Creta 1\.6 VTVT/g, customModel.trim());
+    updated = updated.replace(/ACTIVE/g, customStatus.trim().toUpperCase());
+    setQuery(updated);
+  };
+
+  // Verify record in DB after INSERT / UPDATE
+  const verifyInDb = (plateToVerify?: string) => {
+    const p = plateToVerify || lastWrittenPlate || customPlate;
+    const tableMap: Record<string, { table: string, col: string }> = {
+      registration: { table: 'vehicle_registration', col: 'vehicle_reg_no' },
+      insurance: { table: 'insurance_records', col: 'registration_id' },
+      theft: { table: 'vehicle_security_records', col: 'vehicle_identifier' },
+      ministry: { table: 'transport_reports', col: 'vehicle_ref' },
+      capture: { table: 'vehicle_capture', col: 'plate_number' },
+    };
+
+    const targetInfo = tableMap[database] || { table: 'vehicle_registration', col: 'vehicle_reg_no' };
+    const verifySql = `SELECT * FROM ${targetInfo.table} WHERE ${targetInfo.col} = '${p}'`;
+    setCurrentAction('SELECT');
+    setQuery(verifySql);
+    runQuery(verifySql, database, 'SELECT');
   };
 
   const dbColor = DB_OPTIONS.find(d => d.value === database)?.color ?? '#a78bfa';
@@ -134,17 +464,76 @@ export default function SqlQueryPage() {
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-title">SQL <span>Query</span></h1>
+        <h1 className="page-title">SQL Studio &amp; <span>Distributed CRUD</span></h1>
         <p className="page-subtitle">
-          Run SELECT queries against any of the 5 independent databases — or all at once for a global view
+          Directly <strong>INSERT, UPDATE, and DELETE</strong> records across all 5 independent databases with interactive SQL templates and live verification.
         </p>
       </div>
 
+      {/* ─── ACTION SELECTOR TABS ─── */}
+      <div style={{
+        display: 'flex',
+        gap: 8,
+        marginBottom: 20,
+        background: 'var(--color-surface)',
+        borderRadius: 12,
+        padding: 6,
+        border: '1px solid var(--color-border)',
+        flexWrap: 'wrap'
+      }}>
+        {[
+          { key: 'SELECT', label: '🔍 SELECT (Read Query)', color: '#38bdf8' },
+          { key: 'INSERT', label: '➕ INSERT (Add Record)', color: '#34d399' },
+          { key: 'UPDATE', label: '✏️ UPDATE (Modify Record)', color: '#fbbf24' },
+          { key: 'DELETE', label: '🗑️ DELETE (Remove Record)', color: '#f87171' },
+        ].map(tab => {
+          const isActive = currentAction === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => {
+                const newAction = tab.key as CrudAction;
+                setCurrentAction(newAction);
+                if (newAction !== 'SELECT' && database === 'all') {
+                  setDatabase('registration');
+                }
+                // Auto-load matching template for current DB
+                if (newAction !== 'SELECT') {
+                  const match = CRUD_TEMPLATES.find(t => t.action === newAction && t.db === (database === 'all' ? 'registration' : database));
+                  if (match) setQuery(match.sql);
+                } else {
+                  setQuery(EXAMPLE_SELECT_QUERIES[2].query);
+                }
+                setResults(null);
+                setWriteResult(null);
+                setError('');
+              }}
+              style={{
+                flex: 1,
+                minWidth: 160,
+                padding: '10px 16px',
+                borderRadius: 8,
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 700,
+                transition: 'all 0.2s',
+                background: isActive ? tab.color : 'transparent',
+                color: isActive ? '#000' : 'var(--text-secondary)',
+                boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.2)' : 'none'
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="grid-2" style={{ gap: 24, marginBottom: 24 }}>
-        {/* Left: Query Editor */}
+        {/* Left: Query Editor & Quick Form */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-          {/* Database selector */}
+          {/* Database Selector Card */}
           <div style={{
             background: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
@@ -152,54 +541,52 @@ export default function SqlQueryPage() {
             padding: '16px 20px',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em' }}>
-                SELECT DATABASE
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
+                TARGET DATABASE ({isWriteMode ? 'WRITE DESTINATION' : 'READ SOURCE'})
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 12, color: writeMode ? 'var(--text-muted)' : '#38bdf8', fontWeight: writeMode ? 400 : 700 }}>READ</span>
-                <button
-                  onClick={() => {
-                    const newMode = !writeMode;
-                    setWriteMode(newMode);
-                    if (newMode && database === 'all') setDatabase('capture');
-                    setResults(null);
-                    setWriteResult(null);
-                  }}
-                  style={{
-                    width: 40, height: 20, borderRadius: 10, background: writeMode ? '#f87171' : 'var(--color-surface-3)',
-                    border: 'none', position: 'relative', cursor: 'pointer', transition: 'background 0.2s'
-                  }}
-                >
-                  <div style={{
-                    width: 16, height: 16, borderRadius: '50%', background: 'white',
-                    position: 'absolute', top: 2, left: writeMode ? 22 : 2, transition: 'left 0.2s'
-                  }} />
-                </button>
-                <span style={{ fontSize: 12, color: writeMode ? '#f87171' : 'var(--text-muted)', fontWeight: writeMode ? 700 : 400 }}>WRITE</span>
-              </div>
+              <span style={{
+                fontSize: 11,
+                padding: '2px 8px',
+                borderRadius: 4,
+                fontWeight: 700,
+                background: isWriteMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(56, 189, 248, 0.2)',
+                color: isWriteMode ? '#f87171' : '#38bdf8'
+              }}>
+                {currentAction} MODE
+              </span>
             </div>
+
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {DB_OPTIONS.map(opt => {
-                if (writeMode && opt.value === 'all') return null;
+                if (isWriteMode && opt.value === 'all') return null;
                 const dbOwner = ownership?.[opt.value];
-                const isRemote = writeMode && dbOwner && !dbOwner.writable_here;
-                
+                const isRemote = isWriteMode && dbOwner && !dbOwner.writable_here;
+                const isSelected = database === opt.value;
+
                 return (
                   <button
                     key={opt.value}
-                    onClick={() => setDatabase(opt.value)}
+                    onClick={() => {
+                      setDatabase(opt.value);
+                      if (isWriteMode) {
+                        const match = CRUD_TEMPLATES.find(t => t.action === currentAction && t.db === opt.value);
+                        if (match) setQuery(match.sql);
+                      } else {
+                        const selectMatch = EXAMPLE_SELECT_QUERIES.find(ex => ex.db === opt.value);
+                        if (selectMatch) setQuery(selectMatch.query);
+                      }
+                      setResults(null);
+                      setWriteResult(null);
+                      setError('');
+                    }}
                     style={{
                       padding: '6px 14px',
                       borderRadius: 20,
-                      border: database === opt.value
-                        ? `2px solid ${opt.color}`
-                        : '2px solid var(--color-border)',
-                      background: database === opt.value
-                        ? `${opt.color}22`
-                        : 'var(--color-surface-2)',
-                      color: database === opt.value ? opt.color : 'var(--text-muted)',
+                      border: isSelected ? `2px solid ${opt.color}` : '2px solid var(--color-border)',
+                      background: isSelected ? `${opt.color}22` : 'var(--color-surface-2)',
+                      color: isSelected ? opt.color : 'var(--text-muted)',
                       fontSize: 13,
-                      fontWeight: database === opt.value ? 700 : 400,
+                      fontWeight: isSelected ? 700 : 400,
                       cursor: 'pointer',
                       transition: 'all 0.2s',
                       display: 'flex',
@@ -208,22 +595,117 @@ export default function SqlQueryPage() {
                     }}
                   >
                     {opt.label}
-                    {isRemote && <span title={`Owned by ${dbOwner.owner}`}>🔒</span>}
+                    {isRemote && <span title={`Federated to ${dbOwner.owner}`}>🌐</span>}
                   </button>
                 );
               })}
             </div>
-            {writeMode && ownership?.[database] && !ownership[database].writable_here && (
-              <div style={{ marginTop: 12, fontSize: 12, color: '#f87171', background: '#f8717122', padding: '8px 12px', borderRadius: 8 }}>
-                ℹ️ <strong>Remote Database:</strong> This database belongs to <strong>{ownership[database].owner}</strong>. Writes will be federated over HTTP.
+
+            {/* Distributed Routing Badge */}
+            {isWriteMode && ownership?.[database] && !ownership[database].writable_here && (
+              <div style={{ marginTop: 12, fontSize: 12, color: '#38bdf8', background: 'rgba(56, 189, 248, 0.1)', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+                🌐 <strong>Distributed Federation:</strong> Writes to <strong>{database.toUpperCase()}</strong> will be routed over ngrok to <strong>{ownership[database].owner}</strong> ({ownership[database].node}).
               </div>
             )}
-            {writeMode && ownership?.[database] && ownership[database].writable_here && (
-              <div style={{ marginTop: 12, fontSize: 12, color: '#34d399', background: '#34d39922', padding: '8px 12px', borderRadius: 8 }}>
-                ✅ <strong>Local Database:</strong> This database is owned by this laptop.
+            {isWriteMode && ownership?.[database] && ownership[database].writable_here && (
+              <div style={{ marginTop: 12, fontSize: 12, color: '#34d399', background: 'rgba(52, 211, 153, 0.1)', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(52, 211, 153, 0.2)' }}>
+                💻 <strong>Local Database:</strong> Writes will be executed directly on Master Laptop's local SQLite database.
               </div>
             )}
           </div>
+
+          {/* Quick Form Builder (for customizing details without memorizing SQL) */}
+          {isWriteMode && (
+            <div style={{
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 14,
+              padding: 16,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-primary)' }}>
+                  ⚡ QUICK DETAILS CUSTOMIZER (OPTIONAL)
+                </span>
+                <button
+                  onClick={applyQuickFormToQuery}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    border: '1px solid var(--color-primary)',
+                    background: 'var(--color-primary-glow)',
+                    color: 'var(--color-primary)',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  🔄 Apply Values to SQL
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>PLATE NUMBER</label>
+                  <input
+                    type="text"
+                    value={customPlate}
+                    onChange={e => setCustomPlate(e.target.value.toUpperCase())}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface-2)', color: 'var(--text-primary)', fontSize: 12, fontFamily: 'monospace' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>OWNER / NAME</label>
+                  <input
+                    type="text"
+                    value={customName}
+                    onChange={e => setCustomName(e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface-2)', color: 'var(--text-primary)', fontSize: 12 }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>COLOR</label>
+                  <input
+                    type="text"
+                    value={customColor}
+                    onChange={e => setCustomColor(e.target.value.toUpperCase())}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface-2)', color: 'var(--text-primary)', fontSize: 12 }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>MAKE</label>
+                  <input
+                    type="text"
+                    value={customMake}
+                    onChange={e => setCustomMake(e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface-2)', color: 'var(--text-primary)', fontSize: 12 }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>MODEL</label>
+                  <input
+                    type="text"
+                    value={customModel}
+                    onChange={e => setCustomModel(e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface-2)', color: 'var(--text-primary)', fontSize: 12 }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>STATUS</label>
+                  <select
+                    value={customStatus}
+                    onChange={e => setCustomStatus(e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface-2)', color: 'var(--text-primary)', fontSize: 12 }}
+                  >
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="EXPIRED">EXPIRED</option>
+                    <option value="CANCELLED">CANCELLED</option>
+                    <option value="OPEN">OPEN (Theft)</option>
+                    <option value="CLOSED">CLOSED</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* SQL Editor */}
           <div style={{
@@ -241,10 +723,13 @@ export default function SqlQueryPage() {
               borderBottom: `1px solid ${dbColor}33`,
             }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: dbColor, letterSpacing: '0.05em' }}>
-                SQL EDITOR — {database.toUpperCase()} DATABASE
+                SQL EDITOR — {database.toUpperCase()} ({currentAction})
               </span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{writeMode ? 'INSERT / UPDATE / DELETE' : 'SELECT only'}</span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                {isWriteMode ? 'INSERT / UPDATE / DELETE Mode' : 'SELECT Query Mode'}
+              </span>
             </div>
+
             <textarea
               id="sql-query-input"
               value={query}
@@ -252,7 +737,7 @@ export default function SqlQueryPage() {
               spellCheck={false}
               style={{
                 width: '100%',
-                minHeight: 200,
+                minHeight: 220,
                 padding: '16px',
                 background: '#0d1117',
                 color: '#e6edf3',
@@ -264,27 +749,14 @@ export default function SqlQueryPage() {
                 resize: 'vertical',
                 boxSizing: 'border-box',
               }}
-              placeholder={writeMode ? "INSERT INTO vehicle_capture (plate_number) VALUES ('UP32AB1234')" : "SELECT * FROM vehicle_capture LIMIT 10"}
               onKeyDown={e => {
-                // Ctrl+Enter / Cmd+Enter to run
                 if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                   e.preventDefault();
                   runQuery();
                 }
-                // Tab inserts spaces
-                if (e.key === 'Tab') {
-                  e.preventDefault();
-                  const start = e.currentTarget.selectionStart;
-                  const end = e.currentTarget.selectionEnd;
-                  const newVal = query.substring(0, start) + '    ' + query.substring(end);
-                  setQuery(newVal);
-                  setTimeout(() => {
-                    e.currentTarget.selectionStart = start + 4;
-                    e.currentTarget.selectionEnd = start + 4;
-                  }, 0);
-                }
               }}
             />
+
             <div style={{
               display: 'flex',
               alignItems: 'center',
@@ -293,23 +765,75 @@ export default function SqlQueryPage() {
               background: 'var(--color-surface-2)',
               borderTop: `1px solid ${dbColor}33`,
             }}>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Ctrl+Enter to run</span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Ctrl+Enter to execute</span>
               <button
                 id="sql-run-btn"
                 className="btn btn-primary"
-                onClick={runQuery}
+                onClick={() => runQuery()}
                 disabled={loading}
-                style={{ background: dbColor, border: 'none', minWidth: 120 }}
+                style={{
+                  background: isWriteMode ? '#ef4444' : dbColor,
+                  border: 'none',
+                  minWidth: 140,
+                  fontWeight: 700
+                }}
               >
-                {loading ? 'Running…' : '▶ Run Query'}
+                {loading ? 'Executing…' : (isWriteMode ? `▶ Execute ${currentAction}` : '▶ Run SELECT')}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Right: Examples + Schema helper */}
+        {/* Right: Interactive CRUD Templates & SELECT Examples */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Example queries */}
+
+          {/* CRUD Sample SQL Templates */}
+          <div style={{
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 14,
+            padding: '16px 20px',
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-primary)', letterSpacing: '0.05em', marginBottom: 12 }}>
+              ⚡ ONE-CLICK CRUD SQL TEMPLATES
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
+              {CRUD_TEMPLATES.map((tmpl, i) => (
+                <button
+                  key={i}
+                  onClick={() => loadCrudTemplate(tmpl)}
+                  style={{
+                    textAlign: 'left',
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    border: '1px solid var(--color-border)',
+                    background: currentAction === tmpl.action && database === tmpl.db ? 'var(--color-surface-3)' : 'var(--color-surface-2)',
+                    color: 'var(--text-primary)',
+                    fontSize: 12,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <span>{tmpl.label}</span>
+                  <span style={{
+                    fontSize: 10,
+                    padding: '1px 6px',
+                    borderRadius: 4,
+                    background: tmpl.action === 'INSERT' ? '#34d39922' : (tmpl.action === 'UPDATE' ? '#fbbf2422' : '#f8717122'),
+                    color: tmpl.action === 'INSERT' ? '#34d399' : (tmpl.action === 'UPDATE' ? '#fbbf24' : '#f87171'),
+                    fontWeight: 700
+                  }}>
+                    {tmpl.action}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* SELECT Read Examples */}
           <div style={{
             background: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
@@ -317,13 +841,13 @@ export default function SqlQueryPage() {
             padding: '16px 20px',
           }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 12 }}>
-              EXAMPLE QUERIES
+              🔍 SAMPLE SELECT QUERIES
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {EXAMPLE_QUERIES.map((ex, i) => (
+              {EXAMPLE_SELECT_QUERIES.map((ex, i) => (
                 <button
                   key={i}
-                  onClick={() => loadExample(ex)}
+                  onClick={() => loadSelectExample(ex)}
                   style={{
                     textAlign: 'left',
                     padding: '8px 12px',
@@ -338,8 +862,6 @@ export default function SqlQueryPage() {
                     alignItems: 'center',
                     gap: 8,
                   }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-surface-3)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-surface-2)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'; }}
                 >
                   <span style={{ color: DB_OPTIONS.find(d => d.value === ex.db)?.color, fontSize: 16 }}>
                     {DB_OPTIONS.find(d => d.value === ex.db)?.label.split(' ')[0]}
@@ -350,7 +872,7 @@ export default function SqlQueryPage() {
             </div>
           </div>
 
-          {/* Schema helper */}
+          {/* Schema Helper */}
           <div style={{
             background: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
@@ -364,45 +886,33 @@ export default function SqlQueryPage() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '14px 20px',
-                background: 'transparent',
+                padding: '12px 18px',
+                background: 'var(--color-surface-2)',
                 border: 'none',
                 cursor: 'pointer',
-                color: 'var(--text-secondary)',
+                color: 'var(--text-primary)',
+                fontWeight: 600,
+                fontSize: 12,
+                letterSpacing: '0.05em',
               }}
             >
-              <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.05em' }}>📊 TABLE SCHEMAS</span>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)', transition: 'transform 0.2s', transform: schemaOpen ? 'rotate(180deg)' : 'none' }}>▾</span>
+              <span>DATABASE SCHEMAS &amp; COLUMNS</span>
+              <span>{schemaOpen ? '▲ Hide' : '▼ View'}</span>
             </button>
+
             {schemaOpen && schema && (
-              <div style={{ padding: '0 20px 16px', maxHeight: 400, overflowY: 'auto' }}>
-                {Object.entries(schema).map(([dbName, dbInfo]) => {
+              <div style={{ padding: '12px 16px', maxHeight: 260, overflowY: 'auto', fontSize: 12 }}>
+                {Object.entries(schema).map(([dbName, dbData]) => {
                   const color = DB_OPTIONS.find(d => d.value === dbName)?.color ?? '#aaa';
                   return (
-                    <div key={dbName} style={{ marginBottom: 16 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color, marginBottom: 6, letterSpacing: '0.06em' }}>
-                        {dbName.toUpperCase()} DATABASE
+                    <div key={dbName} style={{ marginBottom: 12 }}>
+                      <div style={{ fontWeight: 700, color, marginBottom: 4, textTransform: 'uppercase', fontSize: 11 }}>
+                        {dbName} Database
                       </div>
-                      {Object.entries(dbInfo.tables || {}).map(([tableName, cols]) => (
-                        <div key={tableName} style={{ marginBottom: 8 }}>
-                          <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, marginBottom: 3 }}>
-                            📋 {tableName}
-                          </div>
-                          <div style={{ paddingLeft: 12, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                            {(cols as SchemaTable[]).map(col => (
-                              <span key={col.name} style={{
-                                fontSize: 10,
-                                padding: '2px 7px',
-                                borderRadius: 4,
-                                background: col.pk ? `${color}33` : 'var(--color-surface-2)',
-                                color: col.pk ? color : 'var(--text-muted)',
-                                border: col.pk ? `1px solid ${color}55` : '1px solid var(--color-border)',
-                                fontFamily: 'monospace',
-                              }}>
-                                {col.pk ? '🔑 ' : ''}{col.name}
-                              </span>
-                            ))}
-                          </div>
+                      {Object.entries(dbData.tables).map(([tblName, cols]) => (
+                        <div key={tblName} style={{ marginBottom: 6, paddingLeft: 8 }}>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--text-secondary)' }}>{tblName}: </span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{cols.map(c => c.name).join(', ')}</span>
                         </div>
                       ))}
                     </div>
@@ -411,10 +921,11 @@ export default function SqlQueryPage() {
               </div>
             )}
           </div>
+
         </div>
       </div>
 
-      {/* Error */}
+      {/* Error Banner */}
       {error && (
         <div style={{
           color: 'var(--color-danger)',
@@ -430,12 +941,12 @@ export default function SqlQueryPage() {
         </div>
       )}
 
-      {/* Loading */}
+      {/* Loading Spinner */}
       {loading && (
         <div className="loading-center"><div className="spinner" /><span>Executing query…</span></div>
       )}
 
-      {/* Write Result */}
+      {/* Write Result with Instant Database Verification Button */}
       {writeResult && !loading && (
         <div style={{
           background: 'var(--color-surface)',
@@ -443,42 +954,67 @@ export default function SqlQueryPage() {
           borderRadius: 14,
           padding: 20,
           marginBottom: 20,
+          boxShadow: '0 4px 16px rgba(52, 211, 153, 0.1)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-success)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 18 }}>
-              ✓
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-success)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 18 }}>
+                ✓
+              </div>
+              <h3 style={{ margin: 0, color: 'var(--color-success)' }}>
+                {currentAction} Executed Successfully!
+              </h3>
             </div>
-            <h3 style={{ margin: 0, color: 'var(--color-success)' }}>Query Executed Successfully</h3>
+
+            {/* Quick Verification Button */}
+            <button
+              onClick={() => verifyInDb()}
+              style={{
+                padding: '8px 16px',
+                borderRadius: 8,
+                border: 'none',
+                background: 'var(--color-primary)',
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: 12,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6
+              }}
+            >
+              🔍 Verify Record in Database (SELECT)
+            </button>
           </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, background: 'var(--color-surface-2)', padding: 16, borderRadius: 8 }}>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16, background: 'var(--color-surface-2)', padding: 16, borderRadius: 8 }}>
             <div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, letterSpacing: '0.05em' }}>DATABASE</div>
-              <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{writeResult.database.toUpperCase()}</div>
+              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{writeResult.database.toUpperCase()}</div>
             </div>
             <div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, letterSpacing: '0.05em' }}>EXECUTED BY</div>
-              <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{writeResult.owner}</div>
+              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{writeResult.owner}</div>
             </div>
             <div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, letterSpacing: '0.05em' }}>AFFECTED ROWS</div>
-              <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{writeResult.affected_rows}</div>
+              <div style={{ fontWeight: 700, color: '#34d399' }}>{writeResult.affected_rows}</div>
             </div>
             <div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, letterSpacing: '0.05em' }}>LAST INSERT ID</div>
-              <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{writeResult.last_insert_id || 'N/A'}</div>
+              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{writeResult.last_insert_id || 'N/A'}</div>
             </div>
           </div>
-          
+
           {writeResult.forwarded_to && (
-            <div style={{ marginTop: 12, fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span>📡</span> Request was forwarded to node at {writeResult.forwarded_to}
+            <div style={{ marginTop: 12, fontSize: 12, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>📡</span> Request was forwarded over network to <strong>{writeResult.forwarded_to}</strong>
             </div>
           )}
         </div>
       )}
 
-      {/* Results */}
+      {/* SELECT Results Display */}
       {results && !loading && (
         <div>
           <div style={{
@@ -498,142 +1034,72 @@ export default function SqlQueryPage() {
             }}>
               {totalRows} row{totalRows !== 1 ? 's' : ''} total
             </span>
-            {database === 'all' && (
-              <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 8 }}>
-                ℹ️ Ran on all 5 DBs — only DBs where the table exists will show results
-              </span>
-            )}
           </div>
 
           {results.map((resultSet, i) => {
             const color = DB_OPTIONS.find(d => d.value === resultSet.database)?.color ?? '#aaa';
-            // "no such table" is expected when running a table-specific query across all DBs.
-            // Show it as a soft grey note, not a scary red error.
             const isNoTable = resultSet.error?.includes('no such table');
             if (resultSet.error && isNoTable && results.length > 1) {
-              return (
-                <div key={i} style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '4px 10px',
-                  borderRadius: 8,
-                  background: 'var(--color-surface-2)',
-                  border: '1px solid var(--color-border)',
-                  color: 'var(--text-muted)',
-                  fontSize: 11,
-                  marginRight: 8,
-                  marginBottom: 8,
-                }}>
-                  <span style={{ color }}>
-                    {DB_OPTIONS.find(d => d.value === resultSet.database)?.label.split(' ')[0]}
-                  </span>
-                  {resultSet.database} — table not in this DB
-                </div>
-              );
+              return null;
             }
-            if (resultSet.error && !isNoTable) {
-              return (
-                <div key={i} style={{
-                  background: 'var(--color-surface)',
-                  border: '1px solid rgba(239,68,68,0.3)',
-                  borderRadius: 12,
-                  padding: 16,
-                  marginBottom: 16,
-                  color: 'var(--color-danger)',
-                  fontSize: 12,
-                  fontFamily: 'monospace',
-                }}>
-                  <strong>{resultSet.database.toUpperCase()}:</strong> {resultSet.error}
-                </div>
-              );
-            }
-            if (resultSet.row_count === 0 && results.length > 1) return null;
+
             return (
-              <div key={i} style={{
-                background: 'var(--color-surface)',
-                border: `1px solid ${color}33`,
-                borderRadius: 14,
-                marginBottom: 20,
-                overflow: 'hidden',
-              }}>
-                {/* Table header */}
+              <div key={i} className="card" style={{ marginBottom: 20 }}>
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 10,
-                  padding: '12px 16px',
-                  background: `${color}11`,
-                  borderBottom: `1px solid ${color}22`,
+                  justifyContent: 'space-between',
+                  marginBottom: 12,
                 }}>
-                  <span style={{ color, fontWeight: 700, fontSize: 13 }}>
-                    {DB_OPTIONS.find(d => d.value === resultSet.database)?.label}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{
+                      display: 'inline-block',
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      background: color,
+                    }} />
+                    <span style={{ fontWeight: 700, color }}>{resultSet.database.toUpperCase()}</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {resultSet.row_count} row{resultSet.row_count !== 1 ? 's' : ''}
                   </span>
-                  <span style={{
-                    background: `${color}22`,
-                    color,
-                    borderRadius: 10,
-                    padding: '1px 8px',
-                    fontSize: 11,
-                    fontWeight: 700,
-                  }}>
-                    {resultSet.row_count} rows
-                  </span>
-                  {resultSet.columns.length > 0 && (
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>
-                      {resultSet.columns.length} columns
-                    </span>
-                  )}
                 </div>
 
-                {/* Table data */}
-                {resultSet.columns.length > 0 ? (
+                {resultSet.error ? (
+                  <div style={{ color: 'var(--color-danger)', fontSize: 12, fontFamily: 'monospace', padding: '10px 14px', background: 'rgba(239,68,68,0.1)', borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)' }}>
+                    <div>❌ {resultSet.error}</div>
+                    {isNoTable && (
+                      <div style={{ marginTop: 8, color: '#38bdf8', fontFamily: 'system-ui, sans-serif', fontSize: 12 }}>
+                        💡 <strong>Table Location Guide:</strong>
+                        <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                          <li><code>vehicle_registration</code> ➔ <strong>Registration DB</strong> (Node A)</li>
+                          <li><code>insurance_records</code> ➔ <strong>Insurance DB</strong> (Node A)</li>
+                          <li><code>vehicle_capture</code> ➔ <strong>Capture DB</strong> (Master)</li>
+                          <li><code>vehicle_security_records</code> ➔ <strong>Theft DB</strong> (Node B)</li>
+                          <li><code>transport_reports</code> ➔ <strong>Ministry DB</strong> (Node B)</li>
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ) : resultSet.rows.length === 0 ? (
+                  <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No records found.</div>
+                ) : (
                   <div style={{ overflowX: 'auto' }}>
-                    <table style={{
-                      width: '100%',
-                      borderCollapse: 'collapse',
-                      fontSize: 12,
-                    }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                       <thead>
-                        <tr>
+                        <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
                           {resultSet.columns.map(col => (
-                            <th key={col} style={{
-                              padding: '8px 14px',
-                              textAlign: 'left',
-                              background: 'var(--color-surface-2)',
-                              color,
-                              fontWeight: 700,
-                              fontSize: 11,
-                              letterSpacing: '0.04em',
-                              borderBottom: `1px solid ${color}22`,
-                              whiteSpace: 'nowrap',
-                              fontFamily: 'monospace',
-                            }}>
-                              {col}
-                            </th>
+                            <th key={col} style={{ padding: '8px 12px', color: 'var(--text-muted)', fontWeight: 600 }}>{col}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {resultSet.rows.map((row, ri) => (
-                          <tr key={ri} style={{ borderBottom: '1px solid var(--color-border)' }}
-                            onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.background = `${color}08`}
-                            onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'}
-                          >
+                        {resultSet.rows.map((row, rIdx) => (
+                          <tr key={rIdx} style={{ borderBottom: '1px solid var(--color-border)' }}>
                             {resultSet.columns.map(col => (
-                              <td key={col} style={{
-                                padding: '8px 14px',
-                                color: 'var(--text-secondary)',
-                                whiteSpace: 'nowrap',
-                                maxWidth: 300,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                fontFamily: 'monospace',
-                                fontSize: 12,
-                              }}>
-                                {row[col] == null
-                                  ? <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>NULL</span>
-                                  : String(row[col])}
+                              <td key={col} style={{ padding: '8px 12px', fontFamily: typeof row[col] === 'string' && (row[col] as string).length < 20 ? 'monospace' : 'inherit' }}>
+                                {row[col] === null ? <span style={{ color: 'var(--text-muted)' }}>NULL</span> : String(row[col])}
                               </td>
                             ))}
                           </tr>
@@ -641,16 +1107,13 @@ export default function SqlQueryPage() {
                       </tbody>
                     </table>
                   </div>
-                ) : (
-                  <div style={{ padding: 20, color: 'var(--text-muted)', textAlign: 'center', fontSize: 13 }}>
-                    No results from this database for the given query.
-                  </div>
                 )}
               </div>
             );
           })}
         </div>
       )}
+
     </div>
   );
 }

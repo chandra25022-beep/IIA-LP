@@ -34,90 +34,123 @@ class RemoteSource:
         self.node_url = node_url.rstrip("/")
         self.db_name = db_name
         self.source_name = db_name
-        self._timeout = 5  # seconds — fail fast if node is down
+        self._timeout = 4  # seconds — fail fast if remote node is down
         self._headers = {"ngrok-skip-browser-warning": "69420"}
+
+        # Resilient local fallback wrapper
+        self._local_fallback = None
+        try:
+            if db_name == "registration":
+                from .registration_source import RegistrationSource
+                self._local_fallback = RegistrationSource()
+            elif db_name == "insurance":
+                from .insurance_source import InsuranceSource
+                self._local_fallback = InsuranceSource()
+            elif db_name == "theft":
+                from .theft_source import TheftSource
+                self._local_fallback = TheftSource()
+            elif db_name == "ministry":
+                from .ministry_source import MinistrySource
+                self._local_fallback = MinistrySource()
+        except Exception as e:
+            logger.debug("Local fallback init error for %s: %s", db_name, e)
 
     # ── Compatibility shim so Mediator can call .get_by_registration() ────────
 
     def get_by_registration(self, registration_number: str) -> Optional[Dict[str, Any]]:
-        """Fetch single record from remote node by registration number."""
-        if not _REQUESTS_OK:
-            logger.error("'requests' library not installed — cannot reach remote node")
-            return None
-        try:
-            url = f"{self.node_url}/api/node/vehicle/{self.db_name}/{registration_number}"
-            resp = requests.get(url, timeout=self._timeout, headers=self._headers)
-            if resp.status_code == 200:
-                data = resp.json()
-                return data.get("record")  # may be None if not found
-            if resp.status_code == 404:
-                return None
-            logger.warning("Remote node %s returned %s for %s", self.node_url, resp.status_code, self.db_name)
-            return None
-        except Exception as exc:
-            logger.warning("RemoteSource(%s/%s) unreachable: %s", self.node_url, self.db_name, exc)
-            return None
+        """Fetch single record from remote node by registration number with local fallback."""
+        if _REQUESTS_OK:
+            try:
+                url = f"{self.node_url}/api/node/vehicle/{self.db_name}/{registration_number}"
+                resp = requests.get(url, timeout=self._timeout, headers=self._headers)
+                is_json = "application/json" in resp.headers.get("content-type", "")
+                if resp.status_code == 200 and is_json:
+                    data = resp.json()
+                    rec = data.get("record")
+                    if rec:
+                        return rec
+                elif resp.status_code == 404 and is_json:
+                    # Explicit JSON 404 from remote node means vehicle definitely doesn't exist there
+                    return None
+            except Exception as exc:
+                logger.warning("RemoteSource(%s/%s) unreachable: %s. Using local fallback.", self.node_url, self.db_name, exc)
+
+        # Fallback to local source if remote node is offline
+        if self._local_fallback is not None:
+            return self._local_fallback.get_by_registration(registration_number)
+        return None
 
     def get_schema_info(self) -> Dict[str, Any]:
-        """Return schema metadata from remote node."""
-        if not _REQUESTS_OK:
-            return {"source": self.db_name, "error": "requests not installed", "tables": {}}
-        try:
-            url = f"{self.node_url}/api/node/schema/{self.db_name}"
-            resp = requests.get(url, timeout=self._timeout, headers=self._headers)
-            if resp.status_code == 200:
-                return resp.json()
-            return {"source": self.db_name, "error": f"HTTP {resp.status_code}", "tables": {}}
-        except Exception as exc:
-            return {"source": self.db_name, "error": str(exc), "tables": {}}
+        """Return schema metadata from remote node with local fallback."""
+        if _REQUESTS_OK:
+            try:
+                url = f"{self.node_url}/api/node/schema/{self.db_name}"
+                resp = requests.get(url, timeout=self._timeout, headers=self._headers)
+                if resp.status_code == 200:
+                    return resp.json()
+            except Exception:
+                pass
+        if self._local_fallback is not None and hasattr(self._local_fallback, "get_schema_info"):
+            return self._local_fallback.get_schema_info()
+        return {"source": self.db_name, "error": "Remote node unreachable", "tables": {}}
 
     def get_statistics(self) -> Dict[str, Any]:
-        """Return stats from remote node."""
-        if not _REQUESTS_OK:
-            return {}
-        try:
-            url = f"{self.node_url}/api/node/statistics/{self.db_name}"
-            resp = requests.get(url, timeout=self._timeout, headers=self._headers)
-            return resp.json() if resp.status_code == 200 else {}
-        except Exception:
-            return {}
+        """Return stats from remote node with local fallback."""
+        if _REQUESTS_OK:
+            try:
+                url = f"{self.node_url}/api/node/statistics/{self.db_name}"
+                resp = requests.get(url, timeout=self._timeout, headers=self._headers)
+                if resp.status_code == 200:
+                    return resp.json()
+            except Exception:
+                pass
+        if self._local_fallback is not None and hasattr(self._local_fallback, "get_statistics"):
+            return self._local_fallback.get_statistics()
+        return {}
 
     def execute_sql(self, query: str) -> Dict[str, Any]:
-        """Run a SELECT query on the remote node's database."""
-        if not _REQUESTS_OK:
-            return {"columns": [], "rows": [], "error": "requests not installed"}
-        try:
-            url = f"{self.node_url}/api/node/sql-query"
-            resp = requests.post(
-                url,
-                json={"query": query, "database": self.db_name},
-                timeout=self._timeout,
-                headers=self._headers,
-            )
-            if resp.status_code == 200:
-                return resp.json()
-            return {"columns": [], "rows": [], "error": f"HTTP {resp.status_code}: {resp.text}"}
-        except Exception as exc:
-            return {"columns": [], "rows": [], "error": str(exc)}
+        """Run a SELECT query on the remote node's database with local fallback."""
+        if _REQUESTS_OK:
+            try:
+                url = f"{self.node_url}/api/node/sql-query"
+                resp = requests.post(
+                    url,
+                    json={"query": query, "database": self.db_name},
+                    timeout=self._timeout,
+                    headers=self._headers,
+                )
+                if resp.status_code == 200 and "application/json" in resp.headers.get("content-type", ""):
+                    return resp.json()
+            except Exception:
+                pass
+
+        if self._local_fallback is not None and hasattr(self._local_fallback, "execute_sql"):
+            return self._local_fallback.execute_sql(query)
+        return {"columns": [], "rows": [], "error": "Remote node unreachable"}
 
     def execute_write(self, query: str) -> Dict[str, Any]:
-        """Run an INSERT/UPDATE/DELETE query on the remote node's database."""
-        if not _REQUESTS_OK:
-            return {"success": False, "error": "requests not installed"}
-        try:
-            url = f"{self.node_url}/api/node/sql-write"
-            resp = requests.post(
-                url,
-                json={"query": query, "database": self.db_name},
-                timeout=self._timeout,
-                headers=self._headers,
-            )
-            if resp.status_code == 200:
-                return resp.json()
-            detail = resp.json().get("detail", resp.text) if resp.content else resp.text
-            return {"success": False, "error": detail}
-        except Exception as exc:
-            return {"success": False, "error": str(exc)}
+        """Run an INSERT/UPDATE/DELETE query on remote node with local copy synchronization."""
+        remote_res = None
+        if _REQUESTS_OK:
+            try:
+                url = f"{self.node_url}/api/node/sql-write"
+                resp = requests.post(
+                    url,
+                    json={"query": query, "database": self.db_name},
+                    timeout=self._timeout,
+                    headers=self._headers,
+                )
+                if resp.status_code == 200:
+                    remote_res = resp.json()
+            except Exception:
+                pass
+
+        # Also sync to local database
+        if self._local_fallback is not None and hasattr(self._local_fallback, "execute_write"):
+            local_res = self._local_fallback.execute_write(query)
+            return remote_res or local_res
+
+        return remote_res or {"success": False, "error": "Node unreachable"}
 
     def ping(self) -> bool:
         """Check if the remote node is reachable."""
@@ -129,7 +162,7 @@ class RemoteSource:
         except Exception:
             return False
 
-    # ── Stubs for mediator methods that loop over all sources ──────────────────
+    # ── Methods for mediator multi-record joins ──────────────────────────────
 
     def get_all_policies(self, registration_number: str) -> List[Dict[str, Any]]:
         return self._get_all("policies", registration_number)
@@ -144,13 +177,21 @@ class RemoteSource:
         return self._get_all("captures", registration_number)
 
     def _get_all(self, kind: str, registration_number: str) -> List[Dict[str, Any]]:
-        if not _REQUESTS_OK:
-            return []
-        try:
-            url = f"{self.node_url}/api/node/vehicle/{self.db_name}/{registration_number}/{kind}"
-            resp = requests.get(url, timeout=self._timeout, headers=self._headers)
-            if resp.status_code == 200:
-                return resp.json().get("records", [])
-            return []
-        except Exception:
-            return []
+        if _REQUESTS_OK:
+            try:
+                url = f"{self.node_url}/api/node/vehicle/{self.db_name}/{registration_number}/{kind}"
+                resp = requests.get(url, timeout=self._timeout, headers=self._headers)
+                if resp.status_code == 200 and "application/json" in resp.headers.get("content-type", ""):
+                    return resp.json().get("records", [])
+            except Exception:
+                pass
+        
+        # Local fallback
+        if self._local_fallback is not None:
+            if kind == "policies" and hasattr(self._local_fallback, "get_all_policies"):
+                return self._local_fallback.get_all_policies(registration_number)
+            elif kind == "cases" and hasattr(self._local_fallback, "get_all_cases"):
+                return self._local_fallback.get_all_cases(registration_number)
+            elif kind == "reports" and hasattr(self._local_fallback, "get_all_reports"):
+                return self._local_fallback.get_all_reports(registration_number)
+        return []

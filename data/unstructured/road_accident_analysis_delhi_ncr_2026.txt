@@ -1,0 +1,57 @@
+ROAD ACCIDENT ANALYSIS REPORT — DELHI NCR
+Prepared by: Indian Road Safety Campaign (IRSC)
+Period: October — November 2026
+
+EXECUTIVE SUMMARY
+This report analyzes road accident patterns in the Delhi NCR region for the October-November 2026 period, with specific focus on uninsured vehicles, overspeed incidents, and vehicle fitness-related accidents.
+
+1. ACCIDENT STATISTICS (Oct-Nov 2026)
+Total accidents reported: 2,847
+Fatal accidents: 312 (11%)
+Accidents involving uninsured vehicles: 423 (15%)
+Accidents involving vehicles without valid fitness certificate: 187 (7%)
+Overspeed-related accidents: 891 (31%)
+
+2. UNINSURED VEHICLE INVOLVEMENT
+Of the 423 accidents involving uninsured vehicles:
+- 67% were two-wheelers (MCWG category)
+- 18% were SUV/Private category vehicles
+- 10% were commercial vehicles (HGV/MGV)
+- 5% were hatchbacks/sedans
+
+Key finding: SUV category vehicles without insurance had 2.3x higher accident severity compared to insured SUVs of the same class.
+
+3. VEHICLE FITNESS CORRELATION
+Vehicles with expired fitness certificates showed:
+- 40% higher brake failure rate
+- 25% higher tire blowout rate
+- 60% higher emission-related mechanical failure
+
+Manufacturers with highest fitness failure rates:
+- Older Mahindra Scorpio models (pre-2020): 23% fitness failure
+- Tata Motors commercial vehicles: 19% fitness failure
+- Maruti Suzuki Alto/WagonR (pre-2018): 15% fitness failure
+- Hyundai models: 8% fitness failure (lowest among mass-market)
+
+4. OVERSPEED HOTSPOTS
+Top locations for overspeed violations (detected via ANPR):
+- DND Flyway (average violation speed: 102 km/h in 80 km/h zone)
+- Dwarka Expressway (average: 97 km/h in 70 km/h zone)
+- Mumbai-Pune Expressway (average: 118 km/h in 100 km/h zone)
+- Outer Ring Road, Bangalore (average: 89 km/h in 60 km/h zone)
+
+5. VEHICLE COLOR AND VISIBILITY
+Analysis of accident frequency by vehicle color:
+- BLACK vehicles: 22% of accidents (over-represented vs 15% fleet share)
+- WHITE vehicles: 28% of accidents (proportional to 30% fleet share)
+- SILVER/GREY vehicles: 20% of accidents
+- RED vehicles: 8% of accidents (lower visibility factor debunked)
+
+6. RECOMMENDATIONS
+(a) ANPR networks should automatically flag uninsured vehicles and generate Ministry reports
+(b) Vehicles with expired fitness certificates should be prevented from renewing insurance
+(c) Overspeed detection should trigger automatic alerts to vehicle owners and enforcement agencies
+(d) Insurance companies should offer premium discounts for vehicles with active ANPR-verified compliance records
+
+Data Sources: Delhi Traffic Police, MoRTH Vahan Database, IRDAI Motor Insurance Database
+Prepared by: IRSC Analytics Division, New Delhi

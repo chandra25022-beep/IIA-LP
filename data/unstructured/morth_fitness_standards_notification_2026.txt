@@ -1,0 +1,42 @@
+MINISTRY OF ROAD TRANSPORT AND HIGHWAYS
+GOVERNMENT OF INDIA
+NOTIFICATION
+
+No. RT-25053/14/2026-MVL
+New Delhi, 5 November 2026
+
+SUBJECT: Enhanced Fitness Testing Standards for Commercial and Private Vehicles — BS-VI Stage II Emission Compliance
+
+In exercise of the powers conferred by Section 56 and Section 110 of the Motor Vehicles Act, 1988 (Act 59 of 1988), the Central Government hereby makes the following amendments to the Central Motor Vehicles Rules, 1989:
+
+1. FITNESS CERTIFICATE VALIDITY
+(a) Private vehicles (LMV, SUV, Sedan, Hatchback):
+   - Vehicles up to 8 years old: Fitness certificate valid for 5 years
+   - Vehicles 8-15 years old: Fitness certificate valid for 2 years
+   - Vehicles older than 15 years: Annual fitness testing mandatory
+
+(b) Commercial vehicles (HGV, MGV, Bus, Goods Carrier):
+   - All commercial vehicles: Annual fitness testing mandatory regardless of age
+
+2. EMISSION NORMS COMPLIANCE
+(a) All vehicles registered after 1 April 2020 must comply with BS-VI emission standards.
+(b) Vehicles failing to meet BS-VI Stage II norms effective 1 April 2027 will be classified as "FITNESS CONDITIONAL" and given 90 days to comply.
+(c) Non-compliant vehicles after the 90-day grace period will have their registration status changed to "SUSPENDED".
+
+3. AUTOMATED VEHICLE FITNESS TESTING (AVFT)
+(a) The Ministry is establishing 500 Automated Vehicle Fitness Testing centers across India.
+(b) All fitness inspections from 1 April 2027 must be conducted at AVFT centers.
+(c) Current states with operational AVFT centers: Delhi, Maharashtra, Karnataka, Tamil Nadu, Gujarat, Haryana, Uttar Pradesh, Rajasthan, Punjab, Madhya Pradesh.
+
+4. SCRAPPAGE POLICY UPDATE
+Vehicles failing fitness tests twice consecutively will be recommended for scrapping under the National Vehicle Scrappage Policy. Owners will receive a Certificate of Deposit (COD) worth up to 4% of the ex-showroom price of a new vehicle as incentive.
+
+5. RTO DIGITAL INTEGRATION
+All RTOs must integrate their fitness testing results with the National Vehicle Registry (Vahan) database within 24 hours of test completion. This enables real-time federation of vehicle fitness data across state boundaries.
+
+Regional Transport Offices referenced: DL-01 through DL-10 (Delhi), MH-01 through MH-20 (Maharashtra), KA-01 through KA-09 (Karnataka), UP-14 through UP-78 (Uttar Pradesh), TN-01 through TN-09 (Tamil Nadu).
+
+By order of the Government of India.
+
+Sd/-
+Joint Secretary (Transport), Ministry of Road Transport and Highways

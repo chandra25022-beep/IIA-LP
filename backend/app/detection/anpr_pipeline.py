@@ -450,22 +450,33 @@ class ANPRPipeline:
         return result
 
     def _detect_dominant_color(self, image: np.ndarray) -> Optional[str]:
-        """Detect vehicle dominant color using HSV color space."""
+        """Detect vehicle dominant color using robust body-panel HSV sampling."""
         if not CV2_AVAILABLE or image is None or image.size == 0:
             return None
 
         try:
-            hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-            h, s, v = cv2.split(hsv)
-            avg_h = float(np.mean(h))
-            avg_s = float(np.mean(s))
-            avg_v = float(np.mean(v))
+            h, w = image.shape[:2]
+            # Sample body paint panels (avoiding top windshield reflection and central grille/plate)
+            body_samples = [
+                image[int(h * 0.35):int(h * 0.70), int(w * 0.12):int(w * 0.38)],  # Left quarter panel/bumper
+                image[int(h * 0.35):int(h * 0.70), int(w * 0.62):int(w * 0.88)],  # Right quarter panel/bumper
+                image[int(h * 0.50):int(h * 0.65), int(w * 0.35):int(w * 0.65)],  # Lower bumper skirt
+            ]
+            valid_samples = [s for s in body_samples if s is not None and s.size > 0]
+            sample = np.vstack(valid_samples) if valid_samples else image
 
-            if avg_s < 35 and avg_v > 190:
-                return "WHITE"
-            elif avg_s < 35 and avg_v < 75:
+            hsv = cv2.cvtColor(sample, cv2.COLOR_BGR2HSV)
+            h_c, s_c, v_c = cv2.split(hsv)
+            avg_h = float(np.median(h_c))
+            avg_s = float(np.median(s_c))
+            avg_v = float(np.median(v_c))
+
+            # Thresholds tuned for automotive finishes under outdoor lighting
+            if avg_v < 65:
                 return "BLACK"
-            elif avg_s < 55 and avg_v < 155:
+            elif avg_s < 35 and avg_v > 185:
+                return "WHITE"
+            elif avg_s < 45 and 65 <= avg_v < 185:
                 return "SILVER"
             elif avg_h < 15 or avg_h > 165:
                 return "RED"
@@ -475,7 +486,10 @@ class ANPRPipeline:
                 return "GREEN"
             elif 15 <= avg_h <= 35:
                 return "YELLOW"
+            elif avg_v < 80:
+                return "BLACK"
             else:
-                return "OTHER"
+                return "SILVER"
         except Exception:
             return None
+

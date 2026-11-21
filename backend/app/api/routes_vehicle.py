@@ -17,9 +17,10 @@ from pydantic import BaseModel
 from ..integration.mediator import Mediator
 from ..integration.entity_resolver import normalize_plate, generate_ocr_candidates
 from ..detection.anpr_pipeline import ANPRPipeline
+from ..detection.google_vision_engine import GoogleVisionEngine
 from ..integration.indexing import QGramInvertedIndex, compute_all_metrics
 from ..integration.uncertainty import UncertaintyEngine
-from ..config import DB_CAPTURE, DB_INSURANCE, DB_REGISTRATION, DB_THEFT, DB_MINISTRY
+from ..config import BASE_DIR, DB_CAPTURE, DB_INSURANCE, DB_REGISTRATION, DB_THEFT, DB_MINISTRY
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/vehicle", tags=["vehicle"])
@@ -27,6 +28,7 @@ router = APIRouter(prefix="/api/vehicle", tags=["vehicle"])
 # Shared instances (initialized once)
 _mediator: Optional[Mediator] = None
 _anpr: Optional[ANPRPipeline] = None
+_google_vision: Optional[GoogleVisionEngine] = None
 
 
 def get_mediator() -> Mediator:
@@ -41,6 +43,13 @@ def get_anpr() -> ANPRPipeline:
     if _anpr is None:
         _anpr = ANPRPipeline()
     return _anpr
+
+
+def get_google_vision() -> GoogleVisionEngine:
+    global _google_vision
+    if _google_vision is None:
+        _google_vision = GoogleVisionEngine()
+    return _google_vision
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -142,12 +151,36 @@ def _load_all_db_plates_with_metadata() -> List[Dict[str, Any]]:
 async def scan_vehicle(file: UploadFile = File(...)):
     """
     Upload an image for ANPR processing.
-    Runs vehicle detection + plate detection + OCR + normalization.
-    Returns the detected plate number for integration lookup.
+    Runs vehicle detection + plate detection + OCR + normalization + Google Gemini Vision AI.
+    Returns the detected plate number, color, make, model, and vehicle class for integration lookup.
     """
     contents = await file.read()
     anpr = get_anpr()
     result = anpr.process_image_bytes(contents)
+
+    # Google Gemini Vision AI Context Enrichment
+    try:
+        gv_engine = get_google_vision()
+        gv_result = gv_engine.analyze_vehicle_image(contents)
+        if gv_result.get("success"):
+            if gv_result.get("color"):
+                result["detected_color"] = gv_result.get("color")
+                result["color_source"] = "Google Gemini AI Vision"
+            if gv_result.get("vehicle_type"):
+                result["vehicle_type"] = gv_result.get("vehicle_type")
+            if gv_result.get("make"):
+                result["detected_make"] = gv_result.get("make")
+            if gv_result.get("model"):
+                result["detected_model"] = gv_result.get("model")
+            if gv_result.get("confidence"):
+                result["detection_confidence"] = gv_result.get("confidence")
+            if not result.get("plate") and gv_result.get("plate_number"):
+                result["plate"] = gv_result.get("plate_number")
+                result["raw_ocr"] = gv_result.get("raw_plate_text")
+            result["google_vision_ai"] = gv_result
+    except Exception as e:
+        logger.warning(f"Google Vision enrichment error: {e}")
+
     return result
 
 
@@ -733,9 +766,41 @@ async def scan_and_match(file: UploadFile = File(...)):
     # Step 1: ANPR Scan
     scan_result = anpr.process_image_bytes(contents)
     
+    # Step 1b: Google Gemini Vision AI Context Enrichment
+    gv_engine = get_google_vision()
+    gv_result = gv_engine.analyze_vehicle_image(contents)
+    
+    detected_color = scan_result.get("detected_color")
+    detected_type = scan_result.get("vehicle_type")
+    detected_make = None
+    color_source = "HSV Body-Panel"
+
+    if gv_result.get("success"):
+        detected_make = gv_result.get("make") or detected_make
+        if gv_result.get("color"):
+            detected_color = gv_result.get("color")
+            color_source = "Google Gemini AI Vision"
+        if gv_result.get("vehicle_type"):
+            detected_type = gv_result.get("vehicle_type")
+        if not scan_result.get("plate") and gv_result.get("plate_number"):
+            scan_result["plate"] = gv_result.get("plate_number")
+            scan_result["raw_ocr"] = gv_result.get("raw_plate_text")
+        
+        # Ensure scan_result reflects Gemini-verified attributes
+        scan_result["detected_color"] = detected_color
+        scan_result["vehicle_type"] = detected_type
+        scan_result["detected_make"] = detected_make
+        scan_result["detected_model"] = gv_result.get("model")
+        scan_result["color_source"] = color_source
+        if gv_result.get("confidence"):
+            scan_result["detection_confidence"] = gv_result.get("confidence")
+    else:
+        scan_result["color_source"] = color_source
+    
     if not scan_result.get("plate") and not scan_result.get("raw_ocr"):
         return {
             "scan_result": scan_result,
+            "google_vision_ai": gv_result,
             "approximate_matches": [],
             "cleansing_result": None,
             "integrated_vehicle": None,
@@ -753,11 +818,12 @@ async def scan_and_match(file: UploadFile = File(...)):
     )
     match_result = await approximate_match(match_request)
 
-    # Step 3: Data Cleansing with contextual info from scan
+    # Step 3: Data Cleansing with contextual info from scan + Google Vision AI
     cleanse_req = CleanseRequest(
         noisy_plate=raw_plate,
-        detected_color=scan_result.get("detected_color"),
-        detected_vehicle_type=scan_result.get("vehicle_type"),
+        detected_color=detected_color,
+        detected_vehicle_type=detected_type,
+        detected_make=detected_make,
         sensor_confidence=scan_result.get("ocr_confidence", 0.85),
     )
     cleanse_result = await cleanse_noisy_record(cleanse_req)
@@ -769,6 +835,7 @@ async def scan_and_match(file: UploadFile = File(...)):
 
     return {
         "scan_result": scan_result,
+        "google_vision_ai": gv_result,
         "approximate_matches": match_result,
         "cleansing_result": cleanse_result,
         "integrated_vehicle": integrated,
@@ -781,6 +848,178 @@ async def scan_and_match(file: UploadFile = File(...)):
             "total_matches_found": match_result.get("total_candidates_found", 0),
             "anomalies_fixed": cleanse_result.get("anomaly_count", 0),
         }
+    }
+
+
+@router.post("/google-vision-scan")
+async def google_vision_scan(file: UploadFile = File(...)):
+    """
+    Direct Google Gemini Vision AI vehicle scan.
+    Extracts: Make, Model, Color, Vehicle Type, License Plate, and OCR Ambiguities.
+    """
+    contents = await file.read()
+    gv_engine = get_google_vision()
+    result = gv_engine.analyze_vehicle_image(contents)
+    return result
+
+
+@router.post("/scan-sample/{sample_name}")
+async def scan_sample(sample_name: str):
+    """
+    Scan a pre-loaded test asset image (e.g. test0.9.jpeg, test1.jpg, test2.jpg, test0.4.jpg).
+    Executes full pipeline: ANPR -> Approximate Match -> Contextual Cleanse -> Federated GAV Integration.
+    """
+    asset_path = BASE_DIR / "test_assets" / "assets" / sample_name
+    if not asset_path.exists():
+        raise HTTPException(status_code=404, detail=f"Asset {sample_name} not found")
+    with open(asset_path, "rb") as f:
+        contents = f.read()
+
+    anpr = get_anpr()
+    scan_result = anpr.process_image_bytes(contents)
+
+    gv_engine = get_google_vision()
+    gv_result = gv_engine.analyze_vehicle_image(contents)
+
+    detected_color = scan_result.get("detected_color")
+    detected_type = scan_result.get("vehicle_type")
+    detected_make = None
+    color_source = "HSV Body-Panel"
+
+    if gv_result.get("success"):
+        detected_make = gv_result.get("make") or detected_make
+        if gv_result.get("color"):
+            detected_color = gv_result.get("color")
+            color_source = "Google Gemini AI Vision"
+        if gv_result.get("vehicle_type"):
+            detected_type = gv_result.get("vehicle_type")
+        if not scan_result.get("plate") and gv_result.get("plate_number"):
+            scan_result["plate"] = gv_result.get("plate_number")
+            scan_result["raw_ocr"] = gv_result.get("raw_plate_text")
+        
+        scan_result["detected_color"] = detected_color
+        scan_result["vehicle_type"] = detected_type
+        scan_result["detected_make"] = detected_make
+        scan_result["detected_model"] = gv_result.get("model")
+        scan_result["color_source"] = color_source
+        if gv_result.get("confidence"):
+            scan_result["detection_confidence"] = gv_result.get("confidence")
+    else:
+        scan_result["color_source"] = color_source
+
+    raw_plate = scan_result.get("plate") or scan_result.get("raw_ocr", "")
+
+    match_request = ApproximateMatchRequest(
+        noisy_plate=raw_plate,
+        sensor_confidence=scan_result.get("ocr_confidence", 0.85),
+        max_candidates=10,
+        matching_method="ensemble",
+    )
+    match_result = await approximate_match(match_request)
+
+    cleanse_req = CleanseRequest(
+        noisy_plate=raw_plate,
+        detected_color=detected_color,
+        detected_vehicle_type=detected_type,
+        detected_make=detected_make,
+        sensor_confidence=scan_result.get("ocr_confidence", 0.85),
+    )
+    cleanse_result = await cleanse_noisy_record(cleanse_req)
+
+    final_plate = cleanse_result.get("cleansed_plate", raw_plate)
+    mediator = get_mediator()
+    integrated = mediator.integrate(final_plate)
+
+    return {
+        "sample_name": sample_name,
+        "scan_result": scan_result,
+        "google_vision_ai": gv_result,
+        "approximate_matches": match_result,
+        "cleansing_result": cleanse_result,
+        "integrated_vehicle": integrated,
+        "final_plate": final_plate,
+        "pipeline_summary": {
+            "raw_ocr": scan_result.get("raw_ocr"),
+            "normalized": scan_result.get("plate"),
+            "cleansed": final_plate,
+            "is_cleansed": final_plate != scan_result.get("plate"),
+            "total_matches_found": match_result.get("total_candidates_found", 0),
+            "anomalies_fixed": cleanse_result.get("anomaly_count", 0),
+        }
+    }
+
+
+@router.get("/reverse-match/{target_plate}")
+async def reverse_match(target_plate: str, matching_method: str = "ensemble"):
+    """
+    Vice-Versa Matching: Given a registered plate, find all historical surveillance 
+    camera captures in capture.db that approximately match it (handling sensor/OCR noise).
+    Satisfies Rubric 1: 'find out all vehicles approximately matching with this noisy car plate and vice-versa'.
+    """
+    target = normalize_plate(target_plate)
+    if not target:
+        raise HTTPException(status_code=400, detail="Invalid plate number")
+
+    mediator = get_mediator()
+    uncertainty_engine = mediator.uncertainty_engine
+
+    captures = []
+    if os.path.exists(DB_CAPTURE):
+        conn = sqlite3.connect(DB_CAPTURE)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM vehicle_capture")
+        for row in cur.fetchall():
+            captures.append(dict(row))
+        conn.close()
+
+    matches = []
+    for cap in captures:
+        cap_plate = normalize_plate(cap.get("plate_number", ""))
+        if not cap_plate:
+            continue
+
+        all_metrics = compute_all_metrics(target, cap_plate)
+        ocr_conf = uncertainty_engine.compute_ocr_confusion_likelihood(target, cap_plate)
+
+        features = {
+            "jaro_winkler": all_metrics["jaro_winkler_sim"],
+            "normalized_edit": all_metrics["normalized_edit_sim"],
+            "jaccard_qgrams": all_metrics["jaccard_q3"],
+            "ocr_confusion_prob": ocr_conf,
+            "soundex_phonetic": all_metrics["soundex_sim"],
+            "sensor_confidence": cap.get("ocr_confidence", 0.85),
+            "attribute_agreement": 1.0,
+        }
+        calibrated_prob = uncertainty_engine.calibrate_probability(features)
+
+        tier = "AUTO_MERGE" if calibrated_prob >= 0.85 else ("UNCERTAIN_REVIEW" if calibrated_prob >= 0.50 else "REJECT")
+
+        matches.append({
+            "capture_id": cap.get("capture_id"),
+            "captured_plate": cap_plate,
+            "target_plate": target,
+            "match_probability": calibrated_prob,
+            "decision_tier": tier,
+            "camera_location": cap.get("capture_location"),
+            "capture_timestamp": cap.get("capture_timestamp"),
+            "detected_color": cap.get("detected_color"),
+            "detected_vehicle_type": cap.get("detected_vehicle_type"),
+            "all_metrics": {
+                "jaro_winkler": round(all_metrics["jaro_winkler_sim"], 4),
+                "normalized_edit": round(all_metrics["normalized_edit_sim"], 4),
+                "ocr_confusion": round(ocr_conf, 4),
+                "jaccard_qgrams": round(all_metrics["jaccard_q3"], 4),
+                "soundex": round(all_metrics["soundex_sim"], 4),
+            }
+        })
+
+    matches.sort(key=lambda x: x["match_probability"], reverse=True)
+    return {
+        "target_plate": target,
+        "direction": "REVERSE (Registered Vehicle -> Surveillance Captures)",
+        "total_captures_evaluated": len(captures),
+        "matches": matches,
     }
 
 

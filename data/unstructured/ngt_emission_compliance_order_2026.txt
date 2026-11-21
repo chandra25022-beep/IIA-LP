@@ -1,0 +1,55 @@
+NATIONAL GREEN TRIBUNAL (NGT)
+PRINCIPAL BENCH, NEW DELHI
+
+ORDER No: NGT/OA/2026/1847/ENV
+
+In the matter of:
+Air Quality Monitoring and Vehicle Emission Compliance in Delhi NCR
+
+SUBJECT: Directions for Enforcement of BS-VI Emission Standards and
+Identification of High-Polluting Vehicles through ANPR Integration
+
+Date: 10 November 2026
+
+BACKGROUND:
+The Central Pollution Control Board (CPCB) has reported that vehicular emissions account for approximately 40% of PM2.5 pollution in Delhi NCR during the winter months (October-February). Despite the introduction of BS-VI emission norms, a significant number of vehicles operating in Delhi NCR do not comply with current emission standards.
+
+DIRECTIONS:
+
+1. ANPR-EMISSION INTEGRATION
+   The Delhi Transport Department shall integrate its ANPR (Automatic Number Plate Recognition) camera network with the Pollution Under Control (PUC) certificate database to enable real-time identification of vehicles without valid PUC certificates.
+
+2. VEHICLE CATEGORIES OF CONCERN
+   The following vehicle categories shall receive enhanced scrutiny:
+   - Diesel vehicles older than 10 years in Delhi NCR
+   - BS-IV or lower emission norm vehicles of any fuel type
+   - Commercial vehicles (HGV, MGV, Bus) without valid PUC certificates
+   - SUV and MUV category vehicles with engine capacity above 2000cc (diesel)
+
+3. PENALTIES
+   - Operating without valid PUC: INR 10,000 fine
+   - BS-IV non-compliant vehicles in NCR: INR 5,000 fine per offense
+   - Repeat offenders: Vehicle impounding for 7 days
+
+4. FUEL TYPE ANALYSIS
+   The following fuel types shall be monitored:
+   - DIESEL: Highest emission concern, mandatory PUC every 3 months for vehicles > 5 years
+   - PETROL: Standard PUC requirement every 6 months
+   - CNG: Lower emission, PUC every 12 months
+   - ELECTRIC: Exempt from PUC requirements
+   - HYBRID: Same as PETROL category
+
+5. AFFECTED MANUFACTURERS
+   Vehicles from the following manufacturers have been identified with highest non-compliance rates:
+   - Mahindra (diesel SUVs — Scorpio, Bolero, XUV series)
+   - Tata Motors (commercial vehicles — Ace, 407 series)
+   - Toyota (diesel SUVs — Fortuner, Innova older models)
+   - Ashok Leyland (buses and heavy commercial vehicles)
+
+6. GEOGRAPHICAL ZONES
+   Enhanced enforcement zones: DL-01 to DL-10 (Delhi), UP-14 (Ghaziabad), UP-16 (Noida), HR-26 (Gurugram), HR-29 (Faridabad)
+
+The Delhi Government shall submit a compliance report within 30 days.
+
+Sd/-
+Chairperson, National Green Tribunal

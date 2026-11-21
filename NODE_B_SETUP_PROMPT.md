@@ -93,3 +93,42 @@ Open your browser to:
 - Interactive Swagger docs: [http://localhost:8002/docs](http://localhost:8002/docs)
 
 You are all set! The Master will query your node to federate Theft and Ministry blacklists in real time.
+
+---
+
+## 🧩 Phase 3: Context Discovery (NEW)
+
+Your node now supports **Phase 3 Context Discovery** with expanded databases:
+
+### Database Tables (FK-PK Relationships)
+**theft.db** (4 tables):
+- `vehicle_security_records` — Primary table (FK: `vehicle_identifier`)
+- `investigation_details` — FK: `case_id` → `vehicle_security_records`
+- `recovery_records` — FK: `case_id` → `vehicle_security_records`
+- `suspect_info` — FK: `case_id` → `vehicle_security_records`
+
+**ministry.db** (4 tables):
+- `transport_reports` — Primary table (FK: `vehicle_ref`)
+- `enforcement_actions` — FK: `report_id` → `transport_reports`
+- `compliance_history` — FK: `report_id` → `transport_reports`
+- `blacklisted_vehicles` — Direct lookup by `vehicle_ref`
+
+### New Endpoint
+```
+POST /api/node/context-query
+Body: {"plate": "DL7CQ1939", "context_hints": []}
+```
+This endpoint:
+1. Looks up the plate in both `theft.db` and `ministry.db`
+2. Performs LOCAL FK-PK joins across all related tables
+3. Returns a **minimal context summary** (risk flags, keywords) — NOT a raw data dump
+4. Reports internal processing time
+
+### Test It
+```bash
+curl -X POST http://localhost:8002/api/node/context-query \
+  -H "Content-Type: application/json" \
+  -d '{"plate":"DL7CQ1939"}'
+```
+
+The response will show FK tables joined (e.g., `investigation_details`, `recovery_records`, `enforcement_actions`), risk flags (e.g., `ACTIVELY_STOLEN`, `BLACKLISTED`), and context keywords extracted from the data.

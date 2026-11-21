@@ -31,7 +31,7 @@ DB_FILES = {
     "ministry":     str(DATA_DIR / "ministry.db"),
 }
 
-# Table names per database
+# Table names per database (primary tables)
 DB_TABLES = {
     "capture":      "vehicle_capture",
     "insurance":    "insurance_records",
@@ -47,6 +47,52 @@ DB_LOCAL_KEY = {
     "registration": "vehicle_reg_no",
     "theft":        "vehicle_identifier",
     "ministry":     "vehicle_ref",
+}
+
+# Phase 3: FK-PK related tables per database
+DB_RELATED_TABLES = {
+    "capture": {
+        "primary": "vehicle_capture",
+        "related": {
+            "cameras": {"fk": "camera_id", "pk": "camera_id"},
+            "capture_alerts": {"fk": "capture_id", "pk": "capture_id"},
+            "operator_logs": {"fk": "capture_id", "pk": "capture_id"},
+        }
+    },
+    "registration": {
+        "primary": "vehicle_registration",
+        "related": {
+            "vehicle_owners": {"fk": "owner_id", "pk": "owner_id"},
+            "vehicle_specs": {"fk": "reg_serial", "pk": "reg_serial"},
+            "rto_transactions": {"fk": "reg_serial", "pk": "reg_serial"},
+            "fitness_certificates": {"fk": "reg_serial", "pk": "reg_serial"},
+        }
+    },
+    "insurance": {
+        "primary": "insurance_policies",
+        "fallback_primary": "insurance_records",
+        "related": {
+            "insurance_claims": {"fk": "policy_id", "pk": "policy_id"},
+            "policy_endorsements": {"fk": "policy_id", "pk": "policy_id"},
+            "premium_payments": {"fk": "policy_id", "pk": "policy_id"},
+        }
+    },
+    "theft": {
+        "primary": "vehicle_security_records",
+        "related": {
+            "investigation_details": {"fk": "case_id", "pk": "case_id"},
+            "recovery_records": {"fk": "case_id", "pk": "case_id"},
+            "suspect_info": {"fk": "case_id", "pk": "case_id"},
+        }
+    },
+    "ministry": {
+        "primary": "transport_reports",
+        "related": {
+            "enforcement_actions": {"fk": "report_id", "pk": "report_id"},
+            "compliance_history": {"fk": "report_id", "pk": "report_id"},
+            "blacklisted_vehicles": {"fk": "vehicle_ref", "pk": "vehicle_ref", "direct_key": True},
+        }
+    },
 }
 
 # API settings

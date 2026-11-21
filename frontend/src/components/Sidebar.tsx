@@ -8,6 +8,7 @@ const navItems = [
   { to: '/sources',    icon: '⬢', label: 'Data Sources',    section: 'integration' },
   { to: '/integration',icon: '⎈', label: 'Integration View',section: 'integration' },
   { to: '/reports',    icon: '⚑', label: 'Ministry Reports',section: 'ministry' },
+  { to: '/context',    icon: '🔍', label: 'Context Discovery',section: 'phase3' },
 ];
 
 export default function Sidebar() {
@@ -58,10 +59,22 @@ export default function Sidebar() {
             <span>{item.label}</span>
           </NavLink>
         ))}
+
+        <div className="sidebar-section-label">Phase 3</div>
+        {navItems.filter(n => n.section === 'phase3').map(item => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+          >
+            <span style={{ fontSize: 16 }}>{item.icon}</span>
+            <span>{item.label}</span>
+          </NavLink>
+        ))}
       </nav>
 
       <div className="sidebar-footer">
-        <div style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>IIA Project — Part A</div>
+        <div style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>IIA Project — Phase 3</div>
         <div>Mediation / Federated Architecture</div>
         <div style={{ marginTop: 6, color: 'var(--color-primary)', fontSize: 10 }}>Backend: {import.meta.env.VITE_API_BASE || 'localhost:8000'}</div>
       </div>

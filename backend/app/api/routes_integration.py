@@ -25,6 +25,7 @@ from ..config import (
     DB_CAPTURE, DB_INSURANCE, DB_REGISTRATION, DB_THEFT, DB_MINISTRY,
     LOCAL_DATABASES, DATABASE_NODE_MAP, NODE_URLS
 )
+from ..integration.context_engine import ContextDiscoveryEngine, ContextAccumulator, UnstructuredSearchEngine
 
 router = APIRouter(prefix="/api", tags=["integration"])
 
@@ -378,19 +379,25 @@ def _run_select(db_path: str, query: str) -> Dict[str, Any]:
 
 
 def _run_select_remote(node_url: str, query: str, db_name: str) -> Dict[str, Any]:
-    """Forward a SELECT query to a remote node."""
+    """Forward a SELECT query to a remote node with automatic local fallback."""
     try:
         resp = requests.post(
             f"{node_url}/api/node/sql-query",
             json={"query": query, "database": db_name},
-            timeout=5,
+            timeout=4,
             headers={"ngrok-skip-browser-warning": "69420"},
         )
-        if resp.status_code == 200:
+        if resp.status_code == 200 and "application/json" in resp.headers.get("content-type", ""):
             return resp.json()
-        return {"columns": [], "rows": [], "error": f"Node returned HTTP {resp.status_code}"}
-    except Exception as e:
-        return {"columns": [], "rows": [], "error": f"Node unreachable: {e}"}
+    except Exception:
+        pass
+
+    # Seamless local fallback so queries NEVER fail if a peer's ngrok tunnel pauses
+    if db_name in _DB_MAP:
+        res = _run_select(_DB_MAP[db_name], query)
+        res["note"] = f"Served via local fallback ({db_name}.db)"
+        return res
+    return {"columns": [], "rows": [], "error": f"Node {node_url} unreachable and no local fallback available"}
 
 
 def _run_write_local(db_path: str, query: str) -> Dict[str, Any]:
@@ -531,32 +538,40 @@ async def run_sql_write(request: SqlWriteRequest):
             "last_insert_id": result["last_insert_id"],
         }
     else:
-        # Forward to remote node
+        # Forward to remote node (with local fallback if offline)
         node_url = NODE_URLS[node_key]
         try:
             resp = requests.post(
                 f"{node_url}/api/node/sql-write",
                 json={"query": query, "database": target},
-                timeout=5,
+                timeout=4,
                 headers={"ngrok-skip-browser-warning": "69420"},
             )
-            if resp.status_code == 200:
+            if resp.status_code == 200 and "application/json" in resp.headers.get("content-type", ""):
                 data = resp.json()
                 data["forwarded_to"] = node_url
                 data["owner"] = ownership.get("owner", node_key)
                 return data
-            detail = resp.json().get("detail", resp.text) if resp.content else resp.text
-            raise HTTPException(status_code=resp.status_code, detail=f"Node error: {detail}")
-        except HTTPException:
-            raise
-        except Exception as e:
-            raise HTTPException(
-                status_code=503,
-                detail=(
-                    f"Cannot reach {ownership.get('owner', node_key)} node at {node_url}. "
-                    f"Make sure that laptop is running its node backend. Error: {e}"
-                )
-            )
+        except Exception:
+            pass
+
+        # Fallback to local write if remote node is paused/unreachable
+        if target in _DB_MAP:
+            result = _run_write_local(_DB_MAP[target], query)
+            if result["error"]:
+                raise HTTPException(status_code=400, detail=result["error"])
+            return {
+                "success": True,
+                "database": target,
+                "owner": f"{ownership.get('owner', node_key)} (Local Fallback)",
+                "affected_rows": result["affected_rows"],
+                "last_insert_id": result["last_insert_id"],
+                "note": "Executed locally via fallback because remote node is offline."
+            }
+        raise HTTPException(
+            status_code=503,
+            detail=f"Cannot reach {ownership.get('owner', node_key)} node at {node_url} and no local database found."
+        )
 
 
 @router.get("/sql-write/ownership")
@@ -946,6 +961,258 @@ async def get_course_concepts():
                 "file": "backend/app/integration/conflict_resolver.py",
                 "description": "Detect & resolve conflicting values across 5 independently designed sources"
             },
+            {
+                "topic": "Phase 3: FK-PK Context Discovery",
+                "lecture": "Phase 3 Rubric + IIA Lectures",
+                "file": "backend/app/integration/context_engine.py → ContextDiscoveryEngine",
+                "description": "Traverse FK-PK relationships in each DB (21 tables, 16 FK relations) to discover rich context from minimal input"
+            },
+            {
+                "topic": "Phase 3: TF-IDF Unstructured Data Search",
+                "lecture": "Phase 3 Rubric + Week 6-8",
+                "file": "backend/app/integration/context_engine.py → UnstructuredSearchEngine",
+                "description": "Index 11 unstructured documents, search using context keywords via augmented TF × IDF with cosine similarity"
+            },
+            {
+                "topic": "Phase 3: Context Accumulation & Integration",
+                "lecture": "Phase 3 Rubric",
+                "file": "backend/app/integration/context_engine.py → ContextAccumulator",
+                "description": "Merge structured context from all distributed nodes + unstructured TF-IDF results into unified risk assessment"
+            },
+            {
+                "topic": "Phase 3: Distributed Node Context Query",
+                "lecture": "Phase 3 Rubric + IIA Lecture 1",
+                "file": "node_backend/main.py → POST /api/node/context-query",
+                "description": "Each node processes locally, runs FK-PK joins, and returns minimal context (not raw data dump)"
+            },
         ]
     }
 
+
+
+# ─── Phase 3: Context Search Request Model ────────────────────────────────────
+
+class ContextSearchRequest(BaseModel):
+    plate: str
+    context_hints: list = []
+
+
+# ─── Phase 3: Context Discovery & Unstructured Data Integration ───────────────
+
+# Singleton TF-IDF engine — built once at import time
+_unstructured_engine: UnstructuredSearchEngine = None
+_context_accumulator: ContextAccumulator = None
+
+
+def _get_unstructured_engine() -> UnstructuredSearchEngine:
+    global _unstructured_engine
+    if _unstructured_engine is None:
+        _unstructured_engine = UnstructuredSearchEngine()
+    return _unstructured_engine
+
+
+def _get_accumulator() -> ContextAccumulator:
+    global _context_accumulator
+    if _context_accumulator is None:
+        _context_accumulator = ContextAccumulator(_get_unstructured_engine())
+    return _context_accumulator
+
+
+@router.post("/context-search")
+async def context_search(request: ContextSearchRequest):
+    """
+    Phase 3 — Federated Context Discovery & Unstructured Data Integration.
+
+    Workflow:
+      1. Run LOCAL context discovery on capture.db (FK-PK joins: cameras,
+         capture_alerts, operator_logs).
+      2. Send context-query to Node A (insurance + registration) via HTTP POST.
+      3. Send context-query to Node B (theft + ministry) via HTTP POST.
+      4. If remote nodes are offline, fall back to local SQLite files.
+      5. Accumulate all context, extract keywords, search unstructured docs
+         with TF-IDF cosine similarity.
+      6. Return integrated structured + unstructured result.
+
+    This demonstrates:
+      - Each node does LOCAL processing (FK-PK joins) and returns MINIMAL context
+      - NOT a raw data dump — real-world company data sharing
+      - Context keywords drive unstructured search (TF-IDF)
+    """
+    import time
+    start = time.perf_counter()
+    plate = request.plate.strip().upper()
+    node_timings = {}
+
+    # ── Step 1: Local context — capture.db (master owns this) ────────────
+    t0 = time.perf_counter()
+    capture_ctx = ContextDiscoveryEngine.discover_capture_context(DB_CAPTURE, plate)
+    node_timings["master_capture"] = round((time.perf_counter() - t0) * 1000, 2)
+
+    # ── Step 2: Remote context — Node A (insurance + registration) ───────
+    node_a_contexts = []
+    t0 = time.perf_counter()
+    node_b_url = NODE_URLS.get("node_b")
+    try:
+        resp = requests.post(
+            f"{node_b_url}/api/node/context-query",
+            json={"plate": plate, "context_hints": request.context_hints},
+            timeout=10,
+            headers={"ngrok-skip-browser-warning": "true"},
+        )
+        resp.raise_for_status()
+        node_a_data = resp.json()
+        for db_name, ctx in node_a_data.get("context_results", {}).items():
+            node_a_contexts.append(ctx)
+        node_timings["node_a_remote"] = round((time.perf_counter() - t0) * 1000, 2)
+        node_timings["node_a_internal_ms"] = node_a_data.get("processing_time_ms")
+        node_timings["node_a_status"] = "ONLINE"
+    except Exception as e:
+        node_timings["node_a_status"] = f"OFFLINE ({str(e)[:80]})"
+        node_timings["node_a_remote"] = round((time.perf_counter() - t0) * 1000, 2)
+        # Fallback: query local copies if available
+        t0 = time.perf_counter()
+        ins_ctx = ContextDiscoveryEngine.discover_insurance_context(DB_INSURANCE, plate)
+        reg_ctx = ContextDiscoveryEngine.discover_registration_context(DB_REGISTRATION, plate)
+        node_a_contexts = [ins_ctx, reg_ctx]
+        node_timings["node_a_fallback"] = round((time.perf_counter() - t0) * 1000, 2)
+
+    # ── Step 3: Remote context — Node B (theft + ministry) ───────────────
+    node_b_contexts = []
+    t0 = time.perf_counter()
+    node_c_url = NODE_URLS.get("node_c")
+    try:
+        resp = requests.post(
+            f"{node_c_url}/api/node/context-query",
+            json={"plate": plate, "context_hints": request.context_hints},
+            timeout=10,
+            headers={"ngrok-skip-browser-warning": "true"},
+        )
+        resp.raise_for_status()
+        node_b_data = resp.json()
+        for db_name, ctx in node_b_data.get("context_results", {}).items():
+            node_b_contexts.append(ctx)
+        node_timings["node_b_remote"] = round((time.perf_counter() - t0) * 1000, 2)
+        node_timings["node_b_internal_ms"] = node_b_data.get("processing_time_ms")
+        node_timings["node_b_status"] = "ONLINE"
+    except Exception as e:
+        node_timings["node_b_status"] = f"OFFLINE ({str(e)[:80]})"
+        node_timings["node_b_remote"] = round((time.perf_counter() - t0) * 1000, 2)
+        # Fallback
+        t0 = time.perf_counter()
+        theft_ctx = ContextDiscoveryEngine.discover_theft_context(DB_THEFT, plate)
+        min_ctx = ContextDiscoveryEngine.discover_ministry_context(DB_MINISTRY, plate)
+        node_b_contexts = [theft_ctx, min_ctx]
+        node_timings["node_b_fallback"] = round((time.perf_counter() - t0) * 1000, 2)
+
+    # ── Step 4: Accumulate all context + TF-IDF unstructured search ──────
+    all_contexts = [capture_ctx] + node_a_contexts + node_b_contexts
+    t0 = time.perf_counter()
+    accumulator = _get_accumulator()
+    integrated = accumulator.accumulate_context(plate, all_contexts)
+    node_timings["accumulation_and_tfidf"] = round((time.perf_counter() - t0) * 1000, 2)
+
+    total_ms = round((time.perf_counter() - start) * 1000, 2)
+
+    return {
+        **integrated,
+        "performance": {
+            "total_ms": total_ms,
+            "per_step_ms": node_timings,
+        },
+        "distributed_processing": {
+            "master": {
+                "node": "Master (this machine)",
+                "databases": ["capture"],
+                "processing": "Local FK-PK join on cameras, capture_alerts, operator_logs",
+            },
+            "node_a": {
+                "node": "Node A (Laptop B)",
+                "databases": ["insurance", "registration"],
+                "url": node_b_url,
+                "status": node_timings.get("node_a_status"),
+                "processing": "Remote FK-PK join on insurance_claims, policy_endorsements, premium_payments, vehicle_owners, vehicle_specs, rto_transactions, fitness_certificates",
+            },
+            "node_b": {
+                "node": "Node B (Laptop C)",
+                "databases": ["theft", "ministry"],
+                "url": node_c_url,
+                "status": node_timings.get("node_b_status"),
+                "processing": "Remote FK-PK join on investigation_details, recovery_records, suspect_info, enforcement_actions, compliance_history, blacklisted_vehicles",
+            },
+        },
+    }
+
+
+@router.get("/context-search/unstructured-stats")
+async def unstructured_stats():
+    """Return TF-IDF index statistics for the unstructured data corpus."""
+    engine = _get_unstructured_engine()
+    stats = engine.get_stats()
+    return {
+        "status": "indexed",
+        "stats": stats,
+        "description": "TF-IDF index built from unstructured documents (circulars, bulletins, advisories) in data/unstructured/",
+    }
+
+
+@router.get("/context-search/schema-graph")
+async def schema_graph():
+    """Return FK-PK relationship graph data for all 5 databases (for frontend visualization)."""
+    return {
+        "databases": {
+            "capture": {
+                "primary_table": "vehicle_capture",
+                "primary_key": "capture_id",
+                "vehicle_key": "plate_number",
+                "related_tables": {
+                    "cameras": {"fk": "camera_id", "relationship": "N:1", "description": "Camera that captured the vehicle"},
+                    "capture_alerts": {"fk": "capture_id", "relationship": "1:N", "description": "Alerts generated from captures"},
+                    "operator_logs": {"fk": "capture_id", "relationship": "1:N", "description": "Operator actions on captures"},
+                },
+            },
+            "registration": {
+                "primary_table": "vehicle_registration",
+                "primary_key": "reg_serial",
+                "vehicle_key": "vehicle_reg_no",
+                "related_tables": {
+                    "vehicle_owners": {"fk": "owner_id", "relationship": "N:1", "description": "Vehicle owner details"},
+                    "vehicle_specs": {"fk": "reg_serial", "relationship": "1:1", "description": "Technical specifications"},
+                    "rto_transactions": {"fk": "reg_serial", "relationship": "1:N", "description": "RTO transaction history"},
+                    "fitness_certificates": {"fk": "reg_serial", "relationship": "1:N", "description": "Fitness test results"},
+                },
+            },
+            "insurance": {
+                "primary_table": "insurance_policies",
+                "primary_key": "policy_id",
+                "vehicle_key": "registration_id",
+                "related_tables": {
+                    "insurance_claims": {"fk": "policy_id", "relationship": "1:N", "description": "Claims filed against policy"},
+                    "policy_endorsements": {"fk": "policy_id", "relationship": "1:N", "description": "Policy modifications"},
+                    "premium_payments": {"fk": "policy_id", "relationship": "1:N", "description": "Premium payment history"},
+                },
+            },
+            "theft": {
+                "primary_table": "vehicle_security_records",
+                "primary_key": "case_id",
+                "vehicle_key": "vehicle_identifier",
+                "related_tables": {
+                    "investigation_details": {"fk": "case_id", "relationship": "1:N", "description": "Investigation sightings and updates"},
+                    "recovery_records": {"fk": "case_id", "relationship": "1:N", "description": "Vehicle recovery details"},
+                    "suspect_info": {"fk": "case_id", "relationship": "1:N", "description": "Suspect information"},
+                },
+            },
+            "ministry": {
+                "primary_table": "transport_reports",
+                "primary_key": "report_id",
+                "vehicle_key": "vehicle_ref",
+                "related_tables": {
+                    "enforcement_actions": {"fk": "report_id", "relationship": "1:N", "description": "Fines and enforcement"},
+                    "compliance_history": {"fk": "report_id", "relationship": "1:N", "description": "Compliance check results"},
+                    "blacklisted_vehicles": {"fk": "vehicle_ref", "relationship": "direct", "description": "National blacklist"},
+                },
+            },
+        },
+        "total_tables": 21,
+        "total_fk_relationships": 16,
+        "global_key": "registration_number (mapped via GAV schema to plate_number, registration_id, vehicle_reg_no, vehicle_identifier, vehicle_ref)",
+    }

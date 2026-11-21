@@ -7,6 +7,7 @@ import DataSources from './pages/DataSources';
 import IntegrationView from './pages/IntegrationView';
 import MinistryReports from './pages/MinistryReports';
 import SqlQueryPage from './pages/SqlQueryPage';
+import ContextDiscovery from './pages/ContextDiscovery';
 import './index.css';
 
 export default function App() {
@@ -23,6 +24,7 @@ export default function App() {
             <Route path="/sources"     element={<DataSources />} />
             <Route path="/integration" element={<IntegrationView />} />
             <Route path="/reports"     element={<MinistryReports />} />
+            <Route path="/context"     element={<ContextDiscovery />} />
           </Routes>
         </main>
       </div>

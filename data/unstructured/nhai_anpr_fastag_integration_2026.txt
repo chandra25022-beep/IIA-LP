@@ -1,0 +1,43 @@
+NATIONAL HIGHWAYS AUTHORITY OF INDIA (NHAI)
+ELECTRONIC TOLL COLLECTION DIVISION
+
+CIRCULAR: NHAI/ETC/2026/ANPR-INTEGRATION/892
+Date: 8 November 2026
+
+SUBJECT: Integration of ANPR Vehicle Identification with FASTag Electronic Toll Collection System for Enhanced Vehicle Verification
+
+1. OBJECTIVE
+This circular outlines the technical framework for integrating Automatic Number Plate Recognition (ANPR) systems with FASTag toll collection infrastructure at all National Highway toll plazas operated by NHAI.
+
+2. TECHNICAL SPECIFICATIONS
+(a) All toll plazas shall install high-resolution ANPR cameras (minimum 4K resolution) capable of reading Indian standard number plates at vehicle speeds up to 120 km/h.
+(b) ANPR readings shall be cross-verified against FASTag vehicle registration data in real-time.
+(c) Mismatches between ANPR-detected plate and FASTag-registered plate shall trigger an automatic alert.
+
+3. DATABASES TO BE INTEGRATED
+The ANPR-FASTag integration system shall query the following databases:
+(a) Vahan (National Vehicle Registration Database) — for vehicle registration verification
+(b) Sarathi (National Driving License Database) — for driver verification
+(c) NCRB Stolen Vehicle Database — for stolen vehicle detection
+(d) IRDAI Motor Insurance Database — for insurance validity check
+(e) MoRTH Fitness Certificate Database — for vehicle fitness status
+
+4. TOLL PLAZAS COVERED (Phase 1)
+- Delhi-Jaipur Highway (NH-48): DND Flyway, Manesar Toll, Shahjahanpur Toll
+- Delhi-Mumbai Expressway: Sohna Toll, Dausa Toll, Ratlam Toll
+- Mumbai-Pune Expressway: Khalapur Toll, Urse Toll, Talegaon Toll
+- Bangalore-Chennai Expressway: Electronic City Toll, Vellore Toll
+- Delhi-Agra Expressway (Yamuna Expressway): Noida Toll, Mathura Toll
+
+5. DATA SHARING PROTOCOL
+(a) ANPR data shall be shared with State Police in real-time for stolen vehicle detection
+(b) Insurance status data shall be shared with IRDAI for compliance monitoring
+(c) All data sharing shall comply with Information Technology Act 2000 and Motor Vehicles Act 1988
+(d) Vehicle capture data retention period: 90 days (extendable to 180 days for flagged vehicles)
+
+6. PERFORMANCE METRICS
+Target accuracy for ANPR plate recognition: 95% or higher
+Maximum processing time per vehicle: 2 seconds
+Integration latency with external databases: Under 100 milliseconds
+
+Issued by: Member (Technical), NHAI

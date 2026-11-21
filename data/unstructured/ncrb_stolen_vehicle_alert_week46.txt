@@ -1,0 +1,77 @@
+NATIONAL CRIME RECORDS BUREAU (NCRB)
+MINISTRY OF HOME AFFAIRS, GOVERNMENT OF INDIA
+
+INTER-STATE STOLEN VEHICLE ALERT NETWORK (ISVAN)
+Weekly Digest — Week 46, November 2026
+
+ALERT CATEGORY: HIGH PRIORITY
+DISTRIBUTION: All State Police Headquarters, ANPR Networks, Toll Plaza Operators
+
+═══════════════════════════════════════════════════════
+SECTION A: NEW STOLEN VEHICLE ENTRIES (Last 7 Days)
+═══════════════════════════════════════════════════════
+
+1. FIR No: FIR-DL7C-4521
+   Vehicle: Hyundai Creta 1.6 VTVT, BLACK, SUV
+   Plate: DL7CQ1939
+   Owner: Rahul Sharma, Sarita Vihar, South Delhi
+   Stolen From: Pocket A, Sarita Vihar, South Delhi
+   Date: 18 November 2026
+   Status: OPEN — Vehicle not yet recovered
+   Last Sighting: ANPR Camera CAM-DEL-01, Sarita Vihar Checkpost
+   Investigating Officer: SI Raman Kumar, Sarita Vihar PS
+   Remarks: Keyless entry relay attack suspected. CCTV footage shows two suspects.
+   ALERT: All ANPR checkpoints in DL, HR, UP, RJ to flag this vehicle.
+
+2. FIR No: FIR-MH04-7823
+   Vehicle: Toyota Fortuner 4x4, WHITE, Full-size SUV
+   Plate: MH04XY5678
+   Owner: Sanjay Mehta, Thane West
+   Stolen From: Hiranandani Estate Parking, Thane
+   Date: 16 November 2026
+   Status: OPEN
+   Last Sighting: Mumbai-Pune Expressway Toll Gate 3 (CAM-PUN-01)
+   Remarks: Armed robbery. FIR registered under IPC 392, 397.
+
+3. FIR No: FIR-KA01-3344
+   Vehicle: Mahindra XUV700 AX7L, GREY, Premium SUV
+   Plate: KA01MN9012
+   Owner: Vikram Rao, Koramangala, Bengaluru
+   Stolen From: Electronic City Phase 1 IT Park
+   Date: 15 November 2026
+   Status: RECOVERED — Bangalore Whitefield
+   Recovery Condition: MINOR_DAMAGE (scratches on driver side)
+
+═══════════════════════════════════════════════════════
+SECTION B: RECOVERED VEHICLES
+═══════════════════════════════════════════════════════
+
+4. Original FIR: FIR-DL09-1122
+   Vehicle: Maruti Suzuki Brezza ZXi+, BLUE, Compact SUV
+   Plate: DL09AB3456
+   Recovered At: Faridabad-Palwal Highway, near Surajkund
+   Condition: INTACT (no damage, number plates replaced with fake ones)
+   Suspects: 2 arrested (Raju alias Spider, Govind Verma)
+   Remarks: Part of organized gang operating in Dwarka-Gurgaon corridor
+
+═══════════════════════════════════════════════════════
+SECTION C: INTER-STATE COORDINATION REQUESTS
+═══════════════════════════════════════════════════════
+
+- Delhi Police requests Haryana, UP, Rajasthan Police to maintain checkpoints for BLACK Hyundai Creta with DL prefix plates
+- Maharashtra Police requests Karnataka and Goa Police to track WHITE Toyota Fortuner with MH prefix plates
+- ANPR networks in all states requested to run real-time matching against NCRB stolen vehicle database
+
+═══════════════════════════════════════════════════════
+SECTION D: STATISTICS
+═══════════════════════════════════════════════════════
+
+This week:
+- Total new stolen vehicle entries: 47
+- Total recoveries: 18 (38% recovery rate)
+- Most stolen category: SUV (23 cases, 49%)
+- Most affected states: Delhi (12), Maharashtra (9), Karnataka (6), Haryana (5)
+- Average recovery time: 8.3 days
+
+Compiled by: NCRB Data Analytics Division
+Contact: ncrb-isvan@gov.in | Helpline: 112
