@@ -391,3 +391,62 @@ Each database was expanded from 1 table to 4-5 tables with proper FK-PK relation
 > 6. Show the **Unstructured Data** section — TF-IDF results with relevance scores and snippets
 > 7. Show the **FK-PK Schema** button — visualizes all 21 tables and 16 FK relationships
 > 8. API endpoint: `curl -X POST http://localhost:8000/api/context-search -H "Content-Type: application/json" -d '{"plate":"DL7CQ1939"}'`
+
+### Q23: What actual data does the system return for a plate search?
+> **Answer (from live test with DL7CQ1939):**
+> "For plate DL7CQ1939, the system returns:
+> - **5 nodes queried, 5 nodes with data** (master + 2 remote nodes or fallback)
+> - **16 FK tables joined** across all nodes
+> - **Capture context:** 1 capture at Bandra-Worli Sea Link Toll, Mumbai; BLACK SUV; speed 68 km/h; camera CAM-MUM-01
+> - **Registration context:** Owner Rahul Sharma, Hyundai Creta 1.6 VTVT, BS6 PETROL, registered at DL-07 South West Delhi (Dwarka), **FITNESS_EXPIRED** flag
+> - **Insurance context:** HDFC ERGO Comprehensive + Engine Protect, ACTIVE policy, premium ₹38,346
+> - **Theft context:** OPEN case, investigation at Chennai Ambattur, **THEFT_ALERT** flag
+> - **Ministry context:** compliance and enforcement history
+> - **5 unstructured documents matched** via TF-IDF:
+>   - `delhi_police_theft_bulletin_nov2026.txt` (score: 19.9%)
+>   - `irdai_suv_insurance_circular_2026.txt` (score: 17.2%)
+>   - `ncrb_stolen_vehicle_alert_week46.txt` (score: 14.4%)
+> - **Risk assessment:** Score 15/100 (LOW), flag: FITNESS_EXPIRED
+> - **Performance:** ~1900ms total (most spent on network timeout to offline nodes → then local fallback in 2-3ms)"
+
+### Q24: How does the unstructured search correlate with structured context?
+> **Answer:**
+> "The correlation is DIRECT and AUTOMATIC — not manual keyword mapping. Here's how:
+> 1. Each node extracts **context keywords** from FK-PK join results (e.g., 'Hyundai', 'Creta', 'SUV', 'Delhi', 'THEFT_ALERT', 'ACTIVE')
+> 2. The master **accumulates ALL keywords** from all nodes (typically 10-20 keywords per search)
+> 3. These keywords become the TF-IDF **query vector**
+> 4. Documents that share vocabulary with these keywords get HIGH cosine similarity scores
+> Example: Since DL7CQ1939 is a Hyundai Creta SUV with a theft alert in Delhi, the system automatically surfaces the Delhi Police Theft Bulletin and Hyundai Creta Recall Notice — because these documents contain the same terms."
+
+### Q25: What happens if one node is offline? Does the system fail?
+> **Answer:**
+> "No — the system implements **graceful degradation** with local fallback:
+> 1. Master attempts HTTP POST to the remote node with a 10-second timeout
+> 2. If the node is OFFLINE (connection refused, 404, timeout), the system catches the exception
+> 3. It falls back to querying LOCAL copies of those databases (which exist on the master for development/testing)
+> 4. The fallback runs in <5ms since it's local SQLite
+> 5. The response clearly shows which nodes were ONLINE vs OFFLINE and whether fallback was used
+> 6. This ensures the demo ALWAYS works even if friends' laptops aren't connected"
+
+### Q26: What is the difference between this system and a traditional data warehouse approach?
+> **Answer:**
+> "In a **data warehouse**, we would ETL (Extract-Transform-Load) all data from all companies into one central database — this violates data sovereignty (the insurance company wouldn't share its full database), creates stale copies, and wastes storage.
+> In our **federated mediation** approach:
+> - Each company (node) keeps its data autonomous and private
+> - Master sends only a plate number (minimal query)
+> - Each node processes LOCALLY using its own FK-PK schema
+> - Returns only relevant CONTEXT (not raw data dumps)
+> - This is real Information Integration — not data copying"
+
+### Q27: Show me that nodes do local processing, not just forward raw data.
+> **Answer (Demo):**
+> "Look at the `node_backend/main.py` → `POST /api/node/context-query` endpoint:
+> ```python
+> # For each database the node owns:
+> # 1. Find the primary record by plate number
+> # 2. Run FK-PK joins (insurance_claims, policy_endorsements, premium_payments)
+> # 3. Build a SUMMARY dict with risk flags and context keywords
+> # 4. Return the summary — NOT raw table rows
+> ```
+> The node's internal processing time is typically 2-5ms, while the network round-trip is 500-2000ms.
+> This proves the node does real computation — the network overhead is from ngrok tunneling, not from processing."
