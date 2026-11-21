@@ -383,3 +383,60 @@ python -c "import requests; print(requests.get('http://127.0.0.1:8000/api/source
 # 3. Run automated 15/15 marks verification
 python scratch/test_evaluation_rubrics.py
 ```
+
+
+---
+
+## Phase 6: Phase 3 Evaluation — Context Discovery & Unstructured Data Integration
+
+### 🧑‍💻 USER Prompt #7 — Phase 3 Implementation
+```text
+Implement Phase 3 of IIA project:
+1. Expand each DB to 4-5 tables with FK-PK relationships (2 marks)
+2. Federated context discovery across distributed DBs exploiting FK-PK (3 marks)  
+3. Unstructured data search correlated to query context + integration (3 marks)
+4. Show prompt, generated code, modified code (2 marks)
+
+Each node must process LOCALLY and return MINIMAL records — not raw data dumps.
+Real-world company scenario: when Master asks Node A about a plate, Node A runs 
+internal FK-PK joins and returns only the relevant summary.
+```
+
+### 🤖 AI Response Summary
+The AI agent generated:
+1. **Database Migration** (`scripts/migrate_phase3.py`): Expanded all 5 databases from 1 table each to 4-5 tables with proper FK-PK relationships (21 tables total, 16 FK relationships).
+2. **Context Engine** (`backend/app/integration/context_engine.py`, 735 lines):
+   - `UnstructuredSearchEngine` — TF-IDF indexer with augmented TF, IDF, and cosine similarity
+   - `ContextDiscoveryEngine` — Static methods for FK-PK traversal per database
+   - `ContextAccumulator` — Merges structured context from all nodes + TF-IDF unstructured search
+3. **11 Unstructured Documents** (`data/unstructured/`): Police bulletins, insurance circulars, recall notices, compliance orders
+4. **Node Backend Update** (`node_backend/main.py`): `POST /api/node/context-query` endpoint that does LOCAL FK-PK joins
+5. **Master Endpoints**: `POST /api/context-search`, `GET /api/context-search/unstructured-stats`, `GET /api/context-search/schema-graph`
+6. **Frontend Page** (`frontend/src/pages/ContextDiscovery.tsx`): Full React page with risk cards, per-node context, TF-IDF results
+
+### ✍️ Key Changes Made to AI-Generated Code
+
+| Component | AI Generated | Modified |
+|---|---|---|
+| Node context-query | Generic FK traversal | Added `DB_RELATED_TABLES` config with per-DB FK mappings, `fallback_primary` for insurance table duality |
+| `_ensure_schema()` | Only original single-table schemas | Expanded to include all 21 Phase 3 tables with proper FK constraints |
+| Master context-search | Sequential node queries | Added `ngrok-skip-browser-warning` header for ngrok tunnels, local fallback when nodes offline |
+| TF-IDF engine | Standard TF | Changed to augmented TF (0.5 + 0.5 × f/max_f) to prevent length bias |
+| Unstructured docs | 5 generic documents | Expanded to 11 India-specific documents (IRDAI, MoRTH, NCRB, NGT, NHAI) |
+
+### 📊 Verified Results
+
+```
+POST /api/context-search {"plate": "DL7CQ1939"}
+→ Status: 200
+→ Nodes with data: 5/5
+→ FK tables joined: 16
+→ Unstructured docs found: 5
+→ Risk level: LOW (15/100), flags: [FITNESS_EXPIRED]
+→ Total time: ~2000ms (with ngrok timeout fallback)
+
+POST /api/node/context-query {"plate": "DL7CQ1939"} (Node A)
+→ Processing time: 2.96ms (LOCAL processing)
+→ insurance: FK=[premium_payments]
+→ registration: FK=[vehicle_owners, vehicle_specs, rto_transactions, fitness_certificates]
+```
