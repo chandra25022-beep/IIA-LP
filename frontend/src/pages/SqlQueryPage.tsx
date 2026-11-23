@@ -282,6 +282,121 @@ WHERE plate_number = 'DL09VIVA2026';`
   },
 ];
 
+interface TableFkInfo {
+  tableName: string;
+  isPrimary: boolean;
+  pkCol: string;
+  fkInfo?: string;
+  description: string;
+}
+
+const DB_FK_METADATA: Record<string, {
+  name: string;
+  owner: string;
+  color: string;
+  primaryKey: string;
+  primaryTable: string;
+  joinSql: string;
+  tables: TableFkInfo[];
+}> = {
+  registration: {
+    name: 'Registration DB',
+    owner: 'Node A (Laptop 2)',
+    color: '#fbbf24',
+    primaryKey: 'reg_serial',
+    primaryTable: 'vehicle_registration',
+    joinSql: `-- Phase 3 Rubric 1: Multi-table FK-PK Join across Registration DB
+SELECT vr.vehicle_reg_no, vo.owner_name, vo.owner_contact, vs.manufacturer, vs.model_name, vs.engine_cc, fc.result as fitness_status, fc.expiry_date
+FROM vehicle_registration vr
+JOIN vehicle_owners vo ON vr.owner_id = vo.owner_id
+JOIN vehicle_specs vs ON vr.reg_serial = vs.reg_serial
+LEFT JOIN fitness_certificates fc ON vr.reg_serial = fc.reg_serial
+LIMIT 15;`,
+    tables: [
+      { tableName: 'vehicle_registration', isPrimary: true, pkCol: 'reg_serial', description: 'Core vehicle registration registry' },
+      { tableName: 'vehicle_owners', isPrimary: false, pkCol: 'owner_id', fkInfo: 'FK: owner_id ➔ vehicle_owners.owner_id', description: 'Owner personal identity & contact details' },
+      { tableName: 'vehicle_specs', isPrimary: false, pkCol: 'spec_id', fkInfo: 'FK: reg_serial ➔ vehicle_registration.reg_serial', description: 'Technical specs (engine CC, emission norm)' },
+      { tableName: 'fitness_certificates', isPrimary: false, pkCol: 'cert_id', fkInfo: 'FK: reg_serial ➔ vehicle_registration.reg_serial', description: 'RTO vehicle fitness inspection validity' },
+      { tableName: 'rto_transactions', isPrimary: false, pkCol: 'txn_id', fkInfo: 'FK: reg_serial ➔ vehicle_registration.reg_serial', description: 'Ownership transfers & hypothecation history' },
+    ]
+  },
+  insurance: {
+    name: 'Insurance DB',
+    owner: 'Node A (Laptop 2)',
+    color: '#34d399',
+    primaryKey: 'policy_id',
+    primaryTable: 'insurance_policies',
+    joinSql: `-- Phase 3 Rubric 1: Multi-table FK-PK Join across Insurance DB
+SELECT ip.policy_number, ip.registration_id, ip.insurer_name, ip.insurance_status, ip.coverage_type, ic.claim_amount, ic.claim_status, pp.amount as last_premium_paid
+FROM insurance_policies ip
+LEFT JOIN insurance_claims ic ON ip.policy_id = ic.policy_id
+LEFT JOIN premium_payments pp ON ip.policy_id = pp.policy_id
+LIMIT 15;`,
+    tables: [
+      { tableName: 'insurance_policies', isPrimary: true, pkCol: 'policy_id', description: 'Active and expired policy master records' },
+      { tableName: 'insurance_claims', isPrimary: false, pkCol: 'claim_id', fkInfo: 'FK: policy_id ➔ insurance_policies.policy_id', description: 'Accident and damage claims filed' },
+      { tableName: 'premium_payments', isPrimary: false, pkCol: 'payment_id', fkInfo: 'FK: policy_id ➔ insurance_policies.policy_id', description: 'Transactional payment receipts & history' },
+      { tableName: 'policy_endorsements', isPrimary: false, pkCol: 'endorsement_id', fkInfo: 'FK: policy_id ➔ insurance_policies.policy_id', description: 'Policy riders and coverage endorsements' },
+    ]
+  },
+  theft: {
+    name: 'Theft Bureau DB',
+    owner: 'Node B (Laptop 3)',
+    color: '#f87171',
+    primaryKey: 'case_id',
+    primaryTable: 'vehicle_security_records',
+    joinSql: `-- Phase 3 Rubric 1: Multi-table FK-PK Join across Theft DB
+SELECT vsr.vehicle_identifier, vsr.case_type, vsr.case_status, id.sighting_location, id.investigation_status, si.suspect_name, si.arrest_status
+FROM vehicle_security_records vsr
+JOIN investigation_details id ON vsr.case_id = id.case_id
+LEFT JOIN suspect_info si ON vsr.case_id = si.case_id
+LIMIT 15;`,
+    tables: [
+      { tableName: 'vehicle_security_records', isPrimary: true, pkCol: 'case_id', description: 'Stolen vehicle cases and FIR reports' },
+      { tableName: 'investigation_details', isPrimary: false, pkCol: 'investigation_id', fkInfo: 'FK: case_id ➔ vehicle_security_records.case_id', description: 'Police sighting logs and status updates' },
+      { tableName: 'recovery_records', isPrimary: false, pkCol: 'recovery_id', fkInfo: 'FK: case_id ➔ vehicle_security_records.case_id', description: 'Vehicle recovery locations and handovers' },
+      { tableName: 'suspect_info', isPrimary: false, pkCol: 'suspect_id', fkInfo: 'FK: case_id ➔ vehicle_security_records.case_id', description: 'Identified suspects and arrest status' },
+    ]
+  },
+  ministry: {
+    name: 'Ministry Transport DB',
+    owner: 'Node B (Laptop 3)',
+    color: '#c084fc',
+    primaryKey: 'report_id',
+    primaryTable: 'transport_reports',
+    joinSql: `-- Phase 3 Rubric 1: Multi-table FK-PK Join across Ministry DB
+SELECT tr.vehicle_ref, tr.report_type, tr.severity, tr.report_status, ea.action_type, ea.fine_amount, ea.action_status
+FROM transport_reports tr
+JOIN enforcement_actions ea ON tr.report_id = ea.report_id
+LIMIT 15;`,
+    tables: [
+      { tableName: 'transport_reports', isPrimary: true, pkCol: 'report_id', description: 'Transport violation & compliance incidents' },
+      { tableName: 'enforcement_actions', isPrimary: false, pkCol: 'action_id', fkInfo: 'FK: report_id ➔ transport_reports.report_id', description: 'Electronic challans and fines issued' },
+      { tableName: 'compliance_history', isPrimary: false, pkCol: 'compliance_id', fkInfo: 'FK: report_id ➔ transport_reports.report_id', description: 'Pollution & emission compliance tests' },
+      { tableName: 'blacklisted_vehicles', isPrimary: false, pkCol: 'blacklist_id', fkInfo: 'Direct GAV link: vehicle_ref', description: 'National blacklist for impounded vehicles' },
+    ]
+  },
+  capture: {
+    name: 'Capture DB',
+    owner: 'Master (Laptop 1)',
+    color: '#38bdf8',
+    primaryKey: 'capture_id',
+    primaryTable: 'vehicle_capture',
+    joinSql: `-- Phase 3 Rubric 1: Multi-table FK-PK Join across Capture DB
+SELECT vc.plate_number, vc.detected_vehicle_type, vc.detected_color, c.location, c.city, ca.alert_type, ca.alert_severity
+FROM vehicle_capture vc
+JOIN cameras c ON vc.camera_id = c.camera_id
+LEFT JOIN capture_alerts ca ON vc.capture_id = ca.capture_id
+LIMIT 15;`,
+    tables: [
+      { tableName: 'vehicle_capture', isPrimary: true, pkCol: 'capture_id', description: 'Live ANPR camera surveillance events' },
+      { tableName: 'cameras', isPrimary: false, pkCol: 'camera_id', fkInfo: 'FK: camera_id ➔ cameras.camera_id', description: 'ANPR smart camera hardware network' },
+      { tableName: 'capture_alerts', isPrimary: false, pkCol: 'alert_id', fkInfo: 'FK: capture_id ➔ vehicle_capture.capture_id', description: 'Real-time security alert triggers' },
+      { tableName: 'operator_logs', isPrimary: false, pkCol: 'log_id', fkInfo: 'FK: capture_id ➔ vehicle_capture.capture_id', description: 'Human operator triage and review logs' },
+    ]
+  },
+};
+
 const EXAMPLE_SELECT_QUERIES = [
   // ── PHASE 3: MULTI-TABLE FK-PK JOINS (RUBRIC 1 & 2 SHOWCASE) ──
   {
@@ -424,7 +539,7 @@ export default function SqlQueryPage() {
   const [totalRows, setTotalRows] = useState(0);
   const [error, setError] = useState('');
   const [schema, setSchema] = useState<Record<string, SchemaDB> | null>(null);
-  const [schemaOpen, setSchemaOpen] = useState(false);
+  const [schemaOpen, setSchemaOpen] = useState(true);
   const [ownership, setOwnership] = useState<Record<string, {owner: string, node: string, writable_here: boolean}> | null>(null);
 
   // Quick form helper fields for customizing templates on the fly
@@ -498,6 +613,29 @@ export default function SqlQueryPage() {
     setError('');
   };
 
+  const loadAndRunJoin = (dbKey: string) => {
+    const meta = DB_FK_METADATA[dbKey];
+    if (!meta) return;
+    setCurrentAction('SELECT');
+    setDatabase(dbKey);
+    setQuery(meta.joinSql);
+    setResults(null);
+    setWriteResult(null);
+    setError('');
+    runQuery(meta.joinSql, dbKey, 'SELECT');
+  };
+
+  const quickQueryTable = (dbKey: string, tableName: string) => {
+    const sql = `SELECT * FROM ${tableName} LIMIT 15;`;
+    setCurrentAction('SELECT');
+    setDatabase(dbKey);
+    setQuery(sql);
+    setResults(null);
+    setWriteResult(null);
+    setError('');
+    runQuery(sql, dbKey, 'SELECT');
+  };
+
   // Re-apply values from the Quick Form into the current query
   const applyQuickFormToQuery = () => {
     let updated = query;
@@ -538,6 +676,69 @@ export default function SqlQueryPage() {
         <p className="page-subtitle">
           Directly <strong>INSERT, UPDATE, and DELETE</strong> records across all 5 independent databases with interactive SQL templates and live verification.
         </p>
+      </div>
+
+      {/* ─── PHASE 3 RUBRIC 1 SHOWCASE BANNER ─── */}
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(168, 85, 247, 0.12))',
+        border: '1px solid rgba(59, 130, 246, 0.3)',
+        borderRadius: 14,
+        padding: '16px 20px',
+        marginBottom: 20,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 22 }}>🎓</span>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
+                Phase 3 Rubric 1: Distributed Schemas (21 Tables across 5 DBs with Explicit PK-FK Relationships)
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                Entity information is distributed across 4–5 tables per authority (owners, specs, fitness, claims) and connected via PK-FK constraints.
+              </div>
+            </div>
+          </div>
+          <span style={{
+            fontSize: 11,
+            fontWeight: 700,
+            padding: '4px 10px',
+            borderRadius: 6,
+            background: '#2563eb',
+            color: '#fff',
+            letterSpacing: '0.05em'
+          }}>
+            RUBRIC 1 (2 MARKS)
+          </span>
+        </div>
+
+        {/* 1-Click Multi-Table FK-PK Join Buttons */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>1-CLICK FK-PK JOINS:</span>
+          {Object.entries(DB_FK_METADATA).map(([key, meta]) => (
+            <button
+              key={key}
+              onClick={() => loadAndRunJoin(key)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 8,
+                border: `1px solid ${meta.color}55`,
+                background: database === key && currentAction === 'SELECT' ? `${meta.color}25` : 'var(--color-surface)',
+                color: meta.color,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+              title={`Execute multi-table FK join on ${meta.name} (${meta.owner})`}
+            >
+              <span>🔗</span>
+              <span>{meta.name} Join</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ─── ACTION SELECTOR TABS ─── */}
@@ -942,7 +1143,7 @@ export default function SqlQueryPage() {
             </div>
           </div>
 
-          {/* Schema Helper */}
+          {/* ─── ENHANCED SCHEMA & PK-FK RELATIONSHIP EXPLORER ─── */}
           <div style={{
             background: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
@@ -961,33 +1162,129 @@ export default function SqlQueryPage() {
                 border: 'none',
                 cursor: 'pointer',
                 color: 'var(--text-primary)',
-                fontWeight: 600,
+                fontWeight: 700,
                 fontSize: 12,
                 letterSpacing: '0.05em',
               }}
             >
-              <span>DATABASE SCHEMAS &amp; COLUMNS</span>
-              <span>{schemaOpen ? '▲ Hide' : '▼ View'}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>📊</span>
+                <span>PK-FK SCHEMA EXPLORER (21 TABLES, 16 FK RELS)</span>
+              </div>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{schemaOpen ? '▲ Collapse' : '▼ Expand'}</span>
             </button>
 
-            {schemaOpen && schema && (
-              <div style={{ padding: '12px 16px', maxHeight: 260, overflowY: 'auto', fontSize: 12 }}>
-                {Object.entries(schema).map(([dbName, dbData]) => {
-                  const color = DB_OPTIONS.find(d => d.value === dbName)?.color ?? '#aaa';
-                  return (
-                    <div key={dbName} style={{ marginBottom: 12 }}>
-                      <div style={{ fontWeight: 700, color, marginBottom: 4, textTransform: 'uppercase', fontSize: 11 }}>
-                        {dbName} Database
+            {schemaOpen && (
+              <div style={{ padding: '16px', maxHeight: 420, overflowY: 'auto', fontSize: 12 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.4 }}>
+                  Click <strong>[⚡ Query]</strong> to fetch any table or <strong>[🔗 Run Join]</strong> to execute live PK-FK joins across distributed nodes:
+                </div>
+
+                {Object.entries(DB_FK_METADATA).map(([dbKey, meta]) => (
+                  <div key={dbKey} style={{
+                    marginBottom: 16,
+                    padding: '12px 14px',
+                    borderRadius: 10,
+                    border: `1px solid ${meta.color}40`,
+                    background: 'var(--color-surface-2)'
+                  }}>
+                    {/* Database Title Bar */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontWeight: 800, color: meta.color, fontSize: 13 }}>{meta.name}</span>
+                        <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: 'var(--color-surface-3)', color: 'var(--text-muted)', fontWeight: 600 }}>
+                          {meta.owner}
+                        </span>
                       </div>
-                      {Object.entries(dbData.tables).map(([tblName, cols]) => (
-                        <div key={tblName} style={{ marginBottom: 6, paddingLeft: 8 }}>
-                          <span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--text-secondary)' }}>{tblName}: </span>
-                          <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{cols.map(c => c.name).join(', ')}</span>
+                      <button
+                        onClick={() => loadAndRunJoin(dbKey)}
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: 6,
+                          border: `1px solid ${meta.color}66`,
+                          background: `${meta.color}15`,
+                          color: meta.color,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4
+                        }}
+                        title={`Run FK-PK join query on ${meta.name}`}
+                      >
+                        <span>🔗</span>
+                        <span>Run FK Join</span>
+                      </button>
+                    </div>
+
+                    {/* Tables with PK / FK indicators */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {meta.tables.map(tbl => (
+                        <div key={tbl.tableName} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '6px 8px',
+                          borderRadius: 6,
+                          background: 'var(--color-surface)',
+                          border: '1px solid var(--color-border)',
+                          flexWrap: 'wrap',
+                          gap: 6
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: 'var(--text-primary)' }}>
+                              {tbl.tableName}
+                            </span>
+                            {tbl.isPrimary ? (
+                              <span style={{
+                                fontSize: 10,
+                                padding: '1px 6px',
+                                borderRadius: 4,
+                                background: '#34d39922',
+                                color: '#34d399',
+                                fontWeight: 700
+                              }}>
+                                PK: {tbl.pkCol}
+                              </span>
+                            ) : (
+                              <span style={{
+                                fontSize: 10,
+                                padding: '1px 6px',
+                                borderRadius: 4,
+                                background: '#38bdf822',
+                                color: '#38bdf8',
+                                fontWeight: 600
+                              }}>
+                                {tbl.fkInfo || `FK: ${tbl.pkCol}`}
+                              </span>
+                            )}
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                              — {tbl.description}
+                            </span>
+                          </div>
+
+                          <button
+                            onClick={() => quickQueryTable(dbKey, tbl.tableName)}
+                            style={{
+                              padding: '2px 8px',
+                              borderRadius: 4,
+                              border: '1px solid var(--color-border)',
+                              background: 'var(--color-surface-2)',
+                              color: 'var(--text-secondary)',
+                              fontSize: 10,
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                            title={`Query SELECT * FROM ${tbl.tableName}`}
+                          >
+                            ⚡ Query
+                          </button>
                         </div>
                       ))}
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             )}
           </div>
