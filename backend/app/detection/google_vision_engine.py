@@ -15,6 +15,15 @@ import urllib.request
 import urllib.error
 import logging
 from typing import Dict, Any, Optional
+from pathlib import Path
+
+try:
+    from dotenv import load_dotenv
+    _base = Path(__file__).resolve().parent.parent.parent.parent
+    load_dotenv(_base / ".env")
+    load_dotenv(_base / "backend" / ".env")
+except Exception:
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +91,7 @@ Return ONLY valid JSON.
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.api_key}"
             req = urllib.request.Request(url, data=data_bytes, headers={"Content-Type": "application/json"})
             try:
-                with urllib.request.urlopen(req, timeout=12) as resp:
+                with urllib.request.urlopen(req, timeout=25) as resp:
                     res = json.loads(resp.read().decode("utf-8"))
                     raw_text = res["candidates"][0]["content"]["parts"][0]["text"]
                     result = json.loads(raw_text)
