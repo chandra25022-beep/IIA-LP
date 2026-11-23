@@ -283,35 +283,105 @@ WHERE plate_number = 'DL09VIVA2026';`
 ];
 
 const EXAMPLE_SELECT_QUERIES = [
+  // ── PHASE 3: MULTI-TABLE FK-PK JOINS (RUBRIC 1 & 2 SHOWCASE) ──
   {
-    label: 'All captures (global view)',
-    db: 'capture',
-    query: 'SELECT plate_number, detected_vehicle_type, detected_color, capture_location, capture_timestamp\nFROM vehicle_capture\nLIMIT 20',
-  },
-  {
-    label: 'Active insurance policies',
-    db: 'insurance',
-    query: "SELECT registration_id, insurer_name, policy_number, policy_expiry_date, insurance_status\nFROM insurance_records\nWHERE insurance_status = 'ACTIVE'\nLIMIT 20",
-  },
-  {
-    label: 'Registered vehicles',
+    label: '⭐ [Phase 3] Registration FK-PK Join (Owner + Specs + Fitness)',
     db: 'registration',
-    query: 'SELECT vehicle_reg_no, owner_name, manufacturer, model_name, registered_color, registration_status\nFROM vehicle_registration\nLIMIT 20',
+    query: `-- Phase 3 Rubric: FK-PK traversal across vehicle_registration, vehicle_owners, vehicle_specs, fitness_certificates
+SELECT vr.vehicle_reg_no, vo.owner_name, vo.owner_contact, vs.manufacturer, vs.model_name, vs.engine_cc, fc.result as fitness_result, fc.expiry_date as fitness_expiry
+FROM vehicle_registration vr
+JOIN vehicle_owners vo ON vr.owner_id = vo.owner_id
+JOIN vehicle_specs vs ON vr.reg_serial = vs.reg_serial
+LEFT JOIN fitness_certificates fc ON vr.reg_serial = fc.reg_serial
+LIMIT 15;`,
   },
   {
-    label: 'Stolen vehicles',
+    label: '⭐ [Phase 3] Insurance FK-PK Join (Policies + Claims + Payments)',
+    db: 'insurance',
+    query: `-- Phase 3 Rubric: FK-PK traversal across insurance_policies, insurance_claims, premium_payments
+SELECT ip.policy_number, ip.registration_id, ip.insurer_name, ip.insurance_status, ip.coverage_type, ic.claim_amount, ic.claim_status, pp.amount as last_premium_paid
+FROM insurance_policies ip
+LEFT JOIN insurance_claims ic ON ip.policy_id = ic.policy_id
+LEFT JOIN premium_payments pp ON ip.policy_id = pp.policy_id
+LIMIT 15;`,
+  },
+  {
+    label: '⭐ [Phase 3] Theft Bureau FK-PK Join (Records + Investigations + Suspects)',
     db: 'theft',
-    query: "SELECT vehicle_identifier, case_type, case_status, reported_date, police_reference\nFROM vehicle_security_records\nWHERE case_type = 'STOLEN'\nLIMIT 20",
+    query: `-- Phase 3 Rubric: FK-PK traversal across vehicle_security_records, investigation_details, suspect_info
+SELECT vsr.vehicle_identifier, vsr.case_type, vsr.case_status, id.sighting_location, id.investigation_status, si.suspect_name, si.arrest_status
+FROM vehicle_security_records vsr
+JOIN investigation_details id ON vsr.case_id = id.case_id
+LEFT JOIN suspect_info si ON vsr.case_id = si.case_id
+LIMIT 15;`,
   },
   {
-    label: 'Ministry reports',
+    label: '⭐ [Phase 3] Ministry FK-PK Join (Transport Reports + Enforcement Actions)',
     db: 'ministry',
-    query: 'SELECT vehicle_ref, report_type, report_date, reason, severity, report_status\nFROM transport_reports\nORDER BY report_date DESC\nLIMIT 20',
+    query: `-- Phase 3 Rubric: FK-PK traversal across transport_reports and enforcement_actions
+SELECT tr.vehicle_ref, tr.report_type, tr.severity, tr.report_status, ea.action_type, ea.fine_amount, ea.action_status
+FROM transport_reports tr
+JOIN enforcement_actions ea ON tr.report_id = ea.report_id
+LIMIT 15;`,
   },
   {
-    label: 'Cross-DB: plate lookup (global view)',
+    label: '⭐ [Phase 3] Capture FK-PK Join (Captures + Cameras + Real-time Alerts)',
+    db: 'capture',
+    query: `-- Phase 3 Rubric: FK-PK traversal across vehicle_capture, cameras, capture_alerts
+SELECT vc.plate_number, vc.detected_vehicle_type, vc.detected_color, c.location, c.city, ca.alert_type, ca.alert_severity
+FROM vehicle_capture vc
+JOIN cameras c ON vc.camera_id = c.camera_id
+LEFT JOIN capture_alerts ca ON vc.capture_id = ca.capture_id
+LIMIT 15;`,
+  },
+
+  // ── PHASE 3: NEW EXPANDED TABLES ──
+  {
+    label: '📋 [Phase 3] Blacklisted Vehicles (Ministry National Blacklist)',
+    db: 'ministry',
+    query: `SELECT blacklist_id, vehicle_ref, blacklist_reason, blacklist_date, is_active\nFROM blacklisted_vehicles\nORDER BY blacklist_date DESC\nLIMIT 20;`,
+  },
+  {
+    label: '📋 [Phase 3] Fitness Test Certificates (Registration RTO)',
+    db: 'registration',
+    query: `SELECT cert_id, reg_serial, cert_number, issue_date, expiry_date, result, inspection_center\nFROM fitness_certificates\nORDER BY issue_date DESC\nLIMIT 20;`,
+  },
+  {
+    label: '📋 [Phase 3] Surveillance Cameras Network (Capture)',
+    db: 'capture',
+    query: `SELECT camera_id, location, city, state, camera_type, resolution, status\nFROM cameras\nLIMIT 20;`,
+  },
+  {
+    label: '📋 [Phase 3] Premium Payments History (Insurance)',
+    db: 'insurance',
+    query: `SELECT payment_id, policy_id, amount, payment_mode, receipt_number, payment_date\nFROM premium_payments\nORDER BY payment_date DESC\nLIMIT 20;`,
+  },
+  {
+    label: '📋 [Phase 3] Stolen Vehicle Recoveries (Theft Bureau)',
+    db: 'theft',
+    query: `SELECT recovery_id, case_id, recovery_date, recovery_location, condition_on_recovery\nFROM recovery_records\nLIMIT 20;`,
+  },
+
+  // ── FEDERATED & CROSS-DB GAV VIEWS ──
+  {
+    label: '🌐 [GAV View] Query DL7CQ1939 Across All 5 Databases',
     db: 'all',
-    query: "SELECT * FROM vehicle_capture WHERE plate_number = 'DL7CQ1939'",
+    query: `SELECT * FROM vehicle_capture WHERE plate_number = 'DL7CQ1939';`,
+  },
+  {
+    label: '📷 All Captures (Latest 20 Surveillance Events)',
+    db: 'capture',
+    query: `SELECT plate_number, detected_vehicle_type, detected_color, capture_location, capture_timestamp\nFROM vehicle_capture\nORDER BY capture_timestamp DESC\nLIMIT 20;`,
+  },
+  {
+    label: '🛡️ Active Insurance Policies',
+    db: 'insurance',
+    query: `SELECT registration_id, insurer_name, policy_number, policy_expiry_date, insurance_status\nFROM insurance_policies\nWHERE insurance_status = 'ACTIVE'\nLIMIT 20;`,
+  },
+  {
+    label: '🚨 Active Stolen / Wanted Cases',
+    db: 'theft',
+    query: `SELECT vehicle_identifier, case_type, case_status, reported_date, police_reference\nFROM vehicle_security_records\nWHERE case_status = 'OPEN'\nLIMIT 20;`,
   },
 ];
 
