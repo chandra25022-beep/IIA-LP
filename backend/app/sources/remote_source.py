@@ -176,6 +176,28 @@ class RemoteSource:
     def get_all_captures(self, registration_number: str) -> List[Dict[str, Any]]:
         return self._get_all("captures", registration_number)
 
+    def get_all_reports_paginated(self, skip: int = 0, limit: int = 50) -> List[Dict[str, Any]]:
+        if _REQUESTS_OK:
+            try:
+                url = f"{self.node_url}/api/node/sql-query"
+                query = f"SELECT * FROM transport_reports ORDER BY report_date DESC LIMIT {limit} OFFSET {skip}"
+                resp = requests.post(url, json={"query": query, "database": self.db_name}, timeout=self._timeout, headers=self._headers)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    res_list = data.get("results", [])
+                    if res_list and isinstance(res_list, list):
+                        return res_list[0].get("rows", [])
+            except Exception:
+                pass
+        if self._local_fallback is not None and hasattr(self._local_fallback, "get_all_reports_paginated"):
+            return self._local_fallback.get_all_reports_paginated(skip, limit)
+        return []
+
+    def get_all_pending_reports(self) -> List[Dict[str, Any]]:
+        if self._local_fallback is not None and hasattr(self._local_fallback, "get_all_pending_reports"):
+            return self._local_fallback.get_all_pending_reports()
+        return []
+
     def _get_all(self, kind: str, registration_number: str) -> List[Dict[str, Any]]:
         if _REQUESTS_OK:
             try:

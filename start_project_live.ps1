@@ -1,4 +1,4 @@
-# IIA Vehicle Integration System — 1-Click PowerShell Launcher
+﻿# IIA Vehicle Integration System — 1-Click PowerShell Launcher
 # IIIT Delhi - Distributed Information Integration Project
 
 Write-Host "======================================================================" -ForegroundColor Cyan
@@ -16,18 +16,21 @@ Write-Host ""
 
 $ProjectRoot = $PSScriptRoot
 if (-not $ProjectRoot) { $ProjectRoot = (Get-Location).Path }
+$env:Path = "C:\Program Files\nodejs;" + $env:Path
 
-$env:GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE"
 $env:NODE_B_URL = "https://mooned-antics-shorter.ngrok-free.dev"
 $env:NODE_C_URL = "https://manhood-overcome-copartner.ngrok-free.dev"
 
+# 0. Check Remote Node Connections Live
+python "$ProjectRoot\scripts\check_nodes.py"
+
 # 1. Start Backend in new window
 Write-Host "[*] Starting FastAPI Master Backend on port 8000..." -ForegroundColor Green
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$env:GEMINI_API_KEY='$($env:GEMINI_API_KEY)'; `$env:NODE_B_URL='$($env:NODE_B_URL)'; `$env:NODE_C_URL='$($env:NODE_C_URL)'; Set-Location '$ProjectRoot\backend'; python -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$ProjectRoot\backend'; python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
 # 2. Start Frontend in new window
 Write-Host "[*] Starting React / Vite Frontend on port 5173..." -ForegroundColor Green
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$ProjectRoot\frontend'; npm run dev -- --host 127.0.0.1 --port 5173"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$env:Path = 'C:\Program Files\nodejs;' + `$env:Path; Set-Location '$ProjectRoot\frontend'; & 'C:\Program Files\nodejs\npx.cmd' vite --host 0.0.0.0 --port 5173"
 
 # Wait 3 seconds
 Start-Sleep -Seconds 3
