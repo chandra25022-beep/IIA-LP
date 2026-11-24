@@ -28,7 +28,12 @@ except Exception:
 logger = logging.getLogger(__name__)
 
 DEFAULT_API_KEY = os.getenv("GEMINI_API_KEY", "")
-PREFERRED_MODELS = ["gemini-3.5-flash", "gemini-3.8-flash"]
+PREFERRED_MODELS = [
+    "gemini-3.5-flash-lite",
+    "gemini-flash-lite-latest",
+    "gemini-3.8-flash",
+    "gemini-3.5-flash",
+]
 
 # In-memory cache by image content hash (instant 0ms response on re-scans)
 _VISION_CACHE: Dict[str, Dict[str, Any]] = {}
@@ -91,13 +96,28 @@ Return ONLY valid JSON.
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.api_key}"
             req = urllib.request.Request(url, data=data_bytes, headers={"Content-Type": "application/json"})
             try:
-                with urllib.request.urlopen(req, timeout=25) as resp:
+                with urllib.request.urlopen(req, timeout=15) as resp:
                     res = json.loads(resp.read().decode("utf-8"))
-                    raw_text = res["candidates"][0]["content"]["parts"][0]["text"]
+                    raw_text = res["candidates"][0]["content"]["parts"][0]["text"].strip()
+                    # Strip markdown code blocks if present
+                    if raw_text.startswith("```"):
+                        lines = raw_text.splitlines()
+                        if lines[0].startswith("```"):
+                            lines = lines[1:]
+                        if lines and lines[-1].startswith("```"):
+                            lines = lines[:-1]
+                        raw_text = "\n".join(lines).strip()
                     result = json.loads(raw_text)
                     result["engine"] = f"Google AI Vision ({model})"
                     result["success"] = True
                     result["cached"] = False
+                    if result.get("plate_number"):
+                        import re
+                        result["plate_number"] = re.sub(r'[^A-Z0-9]', '', str(result["plate_number"]).upper())
+                    if result.get("color"):
+                        result["color"] = str(result["color"]).strip().upper()
+                    if result.get("vehicle_type"):
+                        result["vehicle_type"] = str(result["vehicle_type"]).strip().upper()
                     # Store in cache
                     _VISION_CACHE[img_hash] = result
                     return result

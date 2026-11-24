@@ -538,7 +538,7 @@ export default function SqlQueryPage() {
   const [writeResult, setWriteResult] = useState<WriteResult | null>(null);
   const [totalRows, setTotalRows] = useState(0);
   const [error, setError] = useState('');
-  const [schema, setSchema] = useState<Record<string, SchemaDB> | null>(null);
+  const [_schema, setSchema] = useState<Record<string, SchemaDB> | null>(null);
   const [schemaOpen, setSchemaOpen] = useState(true);
   const [ownership, setOwnership] = useState<Record<string, {owner: string, node: string, writable_here: boolean}> | null>(null);
 

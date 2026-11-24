@@ -255,6 +255,24 @@ def read_plate_with_ai(image_bytes: bytes, additional_crops: Optional[List[np.nd
 
         all_candidates = []
 
+        # ── Engine 0: Google Gemini Multimodal Vision AI ──
+        try:
+            from .google_vision_engine import GoogleVisionEngine
+            gv = GoogleVisionEngine()
+            if gv.api_key:
+                gv_res = gv.analyze_vehicle_image(image_bytes)
+                if gv_res.get("success") and gv_res.get("plate_number"):
+                    gv_plate = _clean_plate_text(gv_res["plate_number"])
+                    if len(gv_plate) >= 4:
+                        all_candidates.append({
+                            "plate": gv_plate,
+                            "confidence": gv_res.get("confidence", 0.96),
+                            "strategy": gv_res.get("engine", "GoogleGeminiVision"),
+                        })
+                        logger.info("Google Vision extracted plate: %s", gv_plate)
+        except Exception as e:
+            logger.debug("Google Vision in ai_plate_reader: %s", e)
+
         # ── Engine 1: RapidOCR (PaddleOCR v4) ──
         if RAPIDOCR_AVAILABLE:
             detections = _rapid_ocr_on_image(image)
@@ -410,4 +428,6 @@ def read_plate_with_ai(image_bytes: bytes, additional_crops: Optional[List[np.nd
 
 def is_ai_available() -> bool:
     """Check if any AI plate reader engine is available."""
-    return RAPIDOCR_AVAILABLE or FAST_PLATE_OCR_AVAILABLE
+    import os
+    api_key = os.getenv("GEMINI_API_KEY", "")
+    return bool(api_key) or RAPIDOCR_AVAILABLE or FAST_PLATE_OCR_AVAILABLE

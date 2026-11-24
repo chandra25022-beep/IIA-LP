@@ -174,9 +174,19 @@ async def scan_vehicle(file: UploadFile = File(...)):
                 result["detected_model"] = gv_result.get("model")
             if gv_result.get("confidence"):
                 result["detection_confidence"] = gv_result.get("confidence")
-            if not result.get("plate") and gv_result.get("plate_number"):
-                result["plate"] = gv_result.get("plate_number")
-                result["raw_ocr"] = gv_result.get("raw_plate_text")
+            if gv_result.get("plate_number"):
+                gemini_plate = normalize_plate(gv_result.get("plate_number"))
+                if not result.get("plate") or not result.get("is_valid_format"):
+                    result["plate"] = gemini_plate
+                    result["raw_ocr"] = gv_result.get("raw_plate_text") or gemini_plate
+                    result["ocr_confidence"] = gv_result.get("confidence", 0.96)
+                    result["is_valid_format"] = is_valid_plate_format(gemini_plate)
+                    result["decoded_origin"] = decode_rto_state(gemini_plate)
+                    result["detection_strategy"] = gv_result.get("engine", "Google Gemini AI Vision")
+                    result["error"] = None
+                    if "pipeline_stages" in result:
+                        result["pipeline_stages"]["ocr_run"] = True
+                        result["pipeline_stages"]["normalized"] = True
             result["google_vision_ai"] = gv_result
     except Exception as e:
         logger.warning(f"Google Vision enrichment error: {e}")
@@ -782,9 +792,19 @@ async def scan_and_match(file: UploadFile = File(...)):
             color_source = "Google Gemini AI Vision"
         if gv_result.get("vehicle_type"):
             detected_type = gv_result.get("vehicle_type")
-        if not scan_result.get("plate") and gv_result.get("plate_number"):
-            scan_result["plate"] = gv_result.get("plate_number")
-            scan_result["raw_ocr"] = gv_result.get("raw_plate_text")
+        if gv_result.get("plate_number"):
+            gemini_plate = normalize_plate(gv_result.get("plate_number"))
+            if not scan_result.get("plate") or not scan_result.get("is_valid_format"):
+                scan_result["plate"] = gemini_plate
+                scan_result["raw_ocr"] = gv_result.get("raw_plate_text") or gemini_plate
+                scan_result["ocr_confidence"] = gv_result.get("confidence", 0.96)
+                scan_result["is_valid_format"] = is_valid_plate_format(gemini_plate)
+                scan_result["decoded_origin"] = decode_rto_state(gemini_plate)
+                scan_result["detection_strategy"] = gv_result.get("engine", "Google Gemini AI Vision")
+                scan_result["error"] = None
+                if "pipeline_stages" in scan_result:
+                    scan_result["pipeline_stages"]["ocr_run"] = True
+                    scan_result["pipeline_stages"]["normalized"] = True
         
         # Ensure scan_result reflects Gemini-verified attributes
         scan_result["detected_color"] = detected_color
@@ -893,9 +913,19 @@ async def scan_sample(sample_name: str):
             color_source = "Google Gemini AI Vision"
         if gv_result.get("vehicle_type"):
             detected_type = gv_result.get("vehicle_type")
-        if not scan_result.get("plate") and gv_result.get("plate_number"):
-            scan_result["plate"] = gv_result.get("plate_number")
-            scan_result["raw_ocr"] = gv_result.get("raw_plate_text")
+        if gv_result.get("plate_number"):
+            gemini_plate = normalize_plate(gv_result.get("plate_number"))
+            if not scan_result.get("plate") or not scan_result.get("is_valid_format"):
+                scan_result["plate"] = gemini_plate
+                scan_result["raw_ocr"] = gv_result.get("raw_plate_text") or gemini_plate
+                scan_result["ocr_confidence"] = gv_result.get("confidence", 0.96)
+                scan_result["is_valid_format"] = is_valid_plate_format(gemini_plate)
+                scan_result["decoded_origin"] = decode_rto_state(gemini_plate)
+                scan_result["detection_strategy"] = gv_result.get("engine", "Google Gemini AI Vision")
+                scan_result["error"] = None
+                if "pipeline_stages" in scan_result:
+                    scan_result["pipeline_stages"]["ocr_run"] = True
+                    scan_result["pipeline_stages"]["normalized"] = True
         
         scan_result["detected_color"] = detected_color
         scan_result["vehicle_type"] = detected_type

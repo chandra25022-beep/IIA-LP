@@ -1,4 +1,4 @@
-﻿# IIA Vehicle Integration System — 1-Click PowerShell Launcher
+# IIA Vehicle Integration System — 1-Click PowerShell Launcher
 # IIIT Delhi - Distributed Information Integration Project
 
 Write-Host "======================================================================" -ForegroundColor Cyan

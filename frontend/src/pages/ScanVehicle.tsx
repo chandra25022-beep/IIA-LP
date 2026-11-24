@@ -59,7 +59,8 @@ export default function ScanVehicle() {
         const cleanseRes = await api.cleanseRecord(
           scan.plate,
           scan.detected_color,
-          scan.vehicle_type
+          scan.vehicle_type,
+          scan.detected_make
         );
         setCleanseResult(cleanseRes);
         // Integrate with cleansed plate
